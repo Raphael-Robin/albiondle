@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Albiondle — Outland Navigator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#0a1116; --void2:#0d181e; --fog:#122029; --raise:#162831;
+  --line:#274850; --line-soft:#1c343c;
+  --portal:#4fd6c4; --portal-dim:rgba(79,214,196,.14); --portal-glow:rgba(79,214,196,.55);
+  --brass:#cba14e; --brass-lite:#e8c977;
+  --parch:#e8d9b6; --parch-shade:#d8c39a; --ink:#241c10;
+  --blood:#cf5a3d; --mist:#7f9aa1; --text:#e2edee;
+  --display:'Cinzel',serif; --body:'Barlow',sans-serif; --mono:'Space Mono',monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:
+    radial-gradient(1200px 700px at 78% -8%, rgba(79,214,196,.10), transparent 60%),
+    radial-gradient(900px 600px at 10% 110%, rgba(203,161,78,.07), transparent 55%),
+    var(--void);
+  color:var(--text); font-family:var(--body); line-height:1.45;
+  min-height:100vh; padding:28px 18px 60px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:760px; margin:0 auto}
+
+/* header */
+.top{display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:22px}
+.brandmark{display:flex; align-items:center; gap:14px}
+.seal{width:44px; height:44px; flex:none}
+.eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.32em; color:var(--portal); text-transform:uppercase; margin:0 0 2px}
+h1{font-family:var(--display); font-weight:700; font-size:30px; letter-spacing:.06em; margin:0; color:var(--brass-lite)}
+.tagline{font-size:13.5px; color:var(--mist); margin:3px 0 0; max-width:34ch}
+
+/* difficulty */
+.diff{display:flex; flex-direction:column; align-items:flex-end; gap:7px}
+.diff .lab{font-family:var(--mono); font-size:10px; letter-spacing:.28em; color:var(--mist); text-transform:uppercase}
+.diff .row{display:flex; gap:4px}
+.diff button{
+  width:30px; height:30px; border:1px solid var(--line); background:var(--void2); color:var(--mist);
+  font-family:var(--mono); font-size:13px; border-radius:5px; cursor:pointer; transition:.15s;
+}
+.diff button:hover{border-color:var(--portal); color:var(--text)}
+.diff button[aria-pressed="true"]{background:var(--portal); border-color:var(--portal); color:#04211d; font-weight:700}
+
+/* panel */
+.panel{
+  background:linear-gradient(180deg,var(--void2),#0b141a);
+  border:1px solid var(--line-soft); border-radius:14px; overflow:hidden;
+  box-shadow:0 24px 60px -30px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.02);
+}
+.sect{padding:20px 22px}
+.sect + .sect{border-top:1px solid var(--line-soft)}
+.label{font-family:var(--mono); font-size:10.5px; letter-spacing:.28em; text-transform:uppercase; color:var(--mist); margin:0 0 12px}
+
+/* start map card (parchment) */
+.origin{
+  display:flex; align-items:center; gap:16px;
+  background:linear-gradient(155deg,var(--parch),var(--parch-shade));
+  color:var(--ink); border-radius:10px; padding:16px 18px;
+  border:1px solid #b49b6c; box-shadow:inset 0 2px 5px rgba(255,255,255,.35), 0 8px 22px -14px #000;
+  position:relative;
+}
+.origin::after{content:""; position:absolute; inset:0; border-radius:10px; pointer-events:none;
+  background:radial-gradient(120% 120% at 90% 10%, transparent 60%, rgba(90,66,20,.14))}
+.pin{width:26px;height:26px;flex:none;color:#7a5a1c}
+.origin .name{font-family:var(--display); font-weight:600; font-size:23px; line-height:1.1; letter-spacing:.01em}
+.origin .meta{margin-top:3px; font-family:var(--mono); font-size:11px; letter-spacing:.06em; color:#6c5426}
+.origin .meta b{color:#4f3d16; font-weight:700}
+
+/* hero: compass + route */
+.hero{display:grid; grid-template-columns:150px 1fr; gap:22px; align-items:center}
+.compass{width:150px; height:150px; margin:0 auto}
+.spoke{transition:opacity .3s, filter .3s; opacity:.16}
+.spoke.lit{opacity:1; filter:drop-shadow(0 0 6px var(--portal-glow))}
+.rose-ring{fill:none; stroke:var(--line); stroke-width:1.2}
+.rose-card{fill:none; stroke:var(--brass); stroke-width:1; opacity:.5}
+.rose-lbl{font-family:var(--mono); font-size:8.5px; fill:var(--mist); letter-spacing:.1em}
+
+.route{display:flex; flex-wrap:wrap; gap:0; align-items:flex-start}
+.wp{display:flex; flex-direction:column; align-items:center; gap:6px; position:relative; min-width:58px}
+.wp .diamond{
+  width:44px;height:44px; transform:rotate(45deg); border:1.5px solid var(--line);
+  background:var(--fog); display:grid; place-items:center; border-radius:8px; transition:.18s; cursor:default;
+}
+.wp .diamond span{transform:rotate(-45deg); font-family:var(--mono); font-weight:700; font-size:13px; color:var(--portal)}
+.wp.active .diamond{border-color:var(--portal); background:var(--portal-dim); box-shadow:0 0 0 3px var(--portal-dim)}
+.wp .ord{font-family:var(--mono); font-size:9px; color:var(--mist); letter-spacing:.1em}
+.wp .stop{font-family:var(--display); font-size:11.5px; color:var(--brass-lite); text-align:center; max-width:82px;
+  line-height:1.15; opacity:0; height:0; overflow:hidden; transition:opacity .3s}
+.route.revealed .wp .stop{opacity:1; height:auto; margin-top:2px}
+.arrow{align-self:center; margin-top:16px; color:var(--line); flex:none}
+.route.revealed .arrow{margin-top:8px}
+
+/* arrival / input */
+.field{position:relative}
+.combo{display:flex; gap:10px}
+input#guess{
+  flex:1; background:var(--void); border:1px solid var(--line); color:var(--text);
+  font-family:var(--display); font-size:18px; padding:13px 15px; border-radius:9px; outline:none; transition:.15s;
+}
+input#guess::placeholder{font-family:var(--body); font-size:15px; color:#5f7a80}
+input#guess:focus{border-color:var(--portal); box-shadow:0 0 0 3px var(--portal-dim)}
+.field.wrong input#guess{border-color:var(--blood); animation:shake .32s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+.acx{position:absolute; z-index:20; top:calc(100% + 6px); left:0; right:120px;
+  background:#0b151b; border:1px solid var(--line); border-radius:9px; overflow:hidden; display:none;
+  box-shadow:0 20px 40px -18px #000}
+.acx.open{display:block}
+.acx div{padding:9px 14px; font-family:var(--display); font-size:15px; cursor:pointer; border-bottom:1px solid var(--line-soft)}
+.acx div:last-child{border-bottom:0}
+.acx div .b{font-size:10px; font-family:var(--mono); color:var(--mist); float:right; margin-top:3px}
+.acx div.sel,.acx div:hover{background:var(--portal-dim); color:var(--brass-lite)}
+
+/* buttons */
+.btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px}
+button.act{font-family:var(--body); font-weight:600; font-size:14px; padding:11px 18px; border-radius:9px; cursor:pointer; border:1px solid transparent; transition:.15s}
+button.primary{background:var(--portal); color:#04211d; border-color:var(--portal)}
+button.primary:hover{background:var(--brass-lite); border-color:var(--brass-lite)}
+button.ghost{background:transparent; color:var(--mist); border-color:var(--line)}
+button.ghost:hover{color:var(--text); border-color:var(--portal)}
+button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
+
+/* result + score */
+.result{min-height:24px; margin-top:14px; font-size:15px; font-weight:500}
+.result.win{color:var(--portal)}
+.result.miss{color:var(--blood)}
+.result.rev{color:var(--brass-lite)}
+.score{display:flex; gap:22px; margin-top:6px; font-family:var(--mono); font-size:11px; letter-spacing:.08em; color:var(--mist); text-transform:uppercase}
+.score b{color:var(--brass-lite)}
+.foot{text-align:center; margin-top:22px; font-size:12px; color:#4c6168; font-family:var(--mono); letter-spacing:.05em}
+.foot a{color:var(--mist)}
+
+@media (max-width:560px){
+  h1{font-size:25px}
+  .hero{grid-template-columns:1fr; gap:14px}
+  .compass{width:120px;height:120px}
+  .acx{right:0}
+  .combo{flex-direction:column}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brandmark">
+      <svg class="seal" viewBox="0 0 44 44" aria-hidden="true">
+        <circle cx="22" cy="22" r="20.5" fill="none" stroke="var(--brass)" stroke-width="1.4" opacity=".7"/>
+        <circle cx="22" cy="22" r="15" fill="none" stroke="var(--line)" stroke-width="1"/>
+        <path d="M22 5 L26 22 L22 39 L18 22 Z" fill="var(--portal)" opacity=".85"/>
+        <path d="M5 22 L22 18 L39 22 L22 26 Z" fill="var(--brass-lite)" opacity=".8"/>
+        <circle cx="22" cy="22" r="2.4" fill="#04211d"/>
+      </svg>
+      <div>
+        <p class="eyebrow">Outland Navigator</p>
+        <h1>ALBIONDLE</h1>
+        <p class="tagline">Follow the gates from the starting map and name where you arrive.</p>
+      </div>
+    </div>
+    <div class="diff">
+      <span class="lab">Gates</span>
+      <div class="row" id="diffRow"></div>
+    </div>
+  </header>
+
+  <main class="panel">
+    <section class="sect">
+      <p class="label">Starting map</p>
+      <div class="origin">
+        <svg class="pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z" fill="currentColor" opacity=".9"/><circle cx="12" cy="9" r="2.6" fill="var(--parch)"/></svg>
+        <div>
+          <div class="name" id="startName">—</div>
+          <div class="meta" id="startMeta"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sect">
+      <p class="label">Gates, in order</p>
+      <div class="hero">
+        <svg class="compass" id="compass" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="rose-ring" cx="60" cy="60" r="54"/>
+          <circle class="rose-ring" cx="60" cy="60" r="40" opacity=".5"/>
+          <!-- cardinal decoration -->
+          <path class="rose-card" d="M60 8 L64 60 L60 112 L56 60 Z"/>
+          <path class="rose-card" d="M8 60 L60 64 L112 60 L60 56 Z"/>
+          <!-- diagonal spokes -->
+          <path class="spoke" id="sp-NW" d="M60 60 L24 24 L34 52 Z" fill="var(--portal)"/>
+          <path class="spoke" id="sp-NE" d="M60 60 L96 24 L68 34 Z" fill="var(--portal)"/>
+          <path class="spoke" id="sp-SE" d="M60 60 L96 96 L86 68 Z" fill="var(--portal)"/>
+          <path class="spoke" id="sp-SW" d="M60 60 L24 96 L52 86 Z" fill="var(--portal)"/>
+          <circle cx="60" cy="60" r="4" fill="var(--brass-lite)"/>
+          <text class="rose-lbl" x="60" y="6" text-anchor="middle">N</text>
+          <text class="rose-lbl" x="60" y="118" text-anchor="middle">S</text>
+          <text class="rose-lbl" x="116" y="63" text-anchor="middle">E</text>
+          <text class="rose-lbl" x="4" y="63" text-anchor="middle">W</text>
+        </svg>
+        <div class="route" id="route"></div>
+      </div>
+    </section>
+
+    <section class="sect">
+      <p class="label">Your destination</p>
+      <div class="field">
+        <div class="combo">
+          <input id="guess" autocomplete="off" spellcheck="false" placeholder="Name the map you arrive at" aria-label="Destination map name">
+          <button class="act primary" id="confirm">Confirm arrival</button>
+        </div>
+        <div class="acx" id="acx" role="listbox"></div>
+      </div>
+      <div class="btns">
+        <button class="act ghost" id="give">Give up</button>
+        <button class="act ghost" id="fresh">New route</button>
+      </div>
+      <div class="result" id="result"></div>
+      <div class="score">
+        <span>Streak <b id="sStreak">0</b></span>
+        <span>Best <b id="sBest">0</b></span>
+        <span>Solved <b id="sSolved">0</b></span>
+      </div>
+    </section>
+  </main>
+
+  <p class="foot">Map data from Albion Online's official world dump · 276 black-zone maps · play as many routes as you like</p>
+</div>
+
+<script>
+const ZONES=[{"n":"Avalanche Incline","t":4,"b":"Mountain","d":{"SE":155,"NE":27,"NW":1}},{"n":"Avalanche Ravine","t":4,"b":"Mountain","d":{"NW":229,"SE":0,"NE":25}},{"n":"Battlebrae Flatland","t":4,"b":"Highland","d":{"SW":18,"SE":5,"NW":106}},{"n":"Battlebrae Grassland","t":5,"b":"Highland","d":{"SE":4,"NE":201,"NW":7}},{"n":"Battlebrae Lake","t":4,"b":"Highland","d":{"NW":3,"SW":6}},{"n":"Battlebrae Meadow","t":4,"b":"Highland","d":{"NW":2,"NE":7}},{"n":"Battlebrae Peaks","t":4,"b":"Highland","d":{"NE":4,"SW":252,"SE":41}},{"n":"Battlebrae Plain","t":5,"b":"Highland","d":{"SE":3,"NW":147,"SW":5}},{"n":"Black Monastery","t":6,"b":null,"d":{"NE":141,"NW":20,"SE":19}},{"n":"Bleachskull Desert","t":2,"b":"Steppe","d":{"NW":10,"SW":271,"NE":110}},{"n":"Bleachskull Steppe","t":2,"b":"Steppe","d":{"SE":9,"SW":269}},{"n":"Braemore Lowland","t":3,"b":"Highland","d":{"NW":12,"SE":229,"SW":167}},{"n":"Braemore Upland","t":2,"b":"Highland","d":{"SE":11,"SW":164}},{"n":"Brambleshore Hinterlands","t":2,"b":"Forest","d":{"SW":175,"NW":176,"SE":56}},{"n":"Citadel of Ash","t":3,"b":null,"d":{"SW":30,"NE":52,"NW":28}},{"n":"Daemonium Keep","t":3,"b":null,"d":{"NW":46,"SW":82}},{"n":"Darkbough Snag","t":6,"b":"Forest","d":{"NW":124,"SW":216}},{"n":"Deadpine Forest","t":6,"b":"Forest","d":{"SE":92,"NE":90,"NW":33}},{"n":"Deathreach Priory","t":3,"b":null,"d":{"NE":2,"SW":99,"SE":129}},{"n":"Deathwisp Bog","t":6,"b":"Swamp","d":{"SW":149,"NW":8,"NE":142}},{"n":"Deathwisp Sink","t":5,"b":"Swamp","d":{"SW":26,"NE":140,"SE":8}},{"n":"Deepwood Copse","t":4,"b":"Forest","d":{"NW":95,"SW":47,"SE":125}},{"n":"Deepwood Dell","t":1,"b":"Forest","d":{"NE":243,"NW":240,"SE":24}},{"n":"Deepwood Gorge","t":2,"b":"Forest","d":{"NE":240,"NW":94,"SE":123}},{"n":"Deepwood Pines","t":2,"b":"Forest","d":{"SE":73,"NW":22}},{"n":"Driftwood Glen","t":4,"b":"Forest","d":{"NE":264,"NW":263,"SE":27,"SW":1}},{"n":"Driftwood Hollow","t":5,"b":"Forest","d":{"NW":27,"SE":152,"NE":20}},{"n":"Driftwood Vale","t":5,"b":"Forest","d":{"NE":143,"SW":0,"NW":25,"SE":26}},{"n":"Drownfield Course","t":2,"b":"Swamp","d":{"SE":14,"SW":35}},{"n":"Drownfield Fen","t":5,"b":"Swamp","d":{"SW":32,"SE":93,"NW":31}},{"n":"Drownfield Mire","t":3,"b":"Swamp","d":{"NE":14,"SE":34,"NW":35,"SW":250}},{"n":"Drownfield Quag","t":4,"b":"Swamp","d":{"NW":250,"SE":29,"SW":248}},{"n":"Drownfield Rut","t":5,"b":"Swamp","d":{"NE":29,"SW":140,"SE":33}},{"n":"Drownfield Sink","t":6,"b":"Swamp","d":{"SE":17,"NW":32}},{"n":"Drownfield Slough","t":4,"b":"Swamp","d":{"NW":30,"NE":185}},{"n":"Drownfield Wetland","t":2,"b":"Swamp","d":{"SE":30,"NW":220,"NE":28,"SW":221}},{"n":"Drybasin Oasis","t":3,"b":"Steppe","d":{"NE":37,"SW":88,"SE":85}},{"n":"Drybasin Riverbed","t":3,"b":"Steppe","d":{"SW":36,"SE":238}},{"n":"Drytop Pillars","t":2,"b":"Steppe","d":{"NW":39,"SW":220}},{"n":"Drytop Riverbed","t":2,"b":"Steppe","d":{"SW":258,"SE":38}},{"n":"Dryvein Confluence","t":4,"b":"Steppe","d":{"SW":41,"NE":42,"SE":45}},{"n":"Dryvein Cross","t":3,"b":"Steppe","d":{"NW":6,"SW":43,"NE":40,"SE":193}},{"n":"Dryvein End","t":5,"b":"Steppe","d":{"SW":40,"NW":199,"SE":204}},{"n":"Dryvein Oasis","t":2,"b":"Steppe","d":{"SE":44,"NE":41,"SW":195}},{"n":"Dryvein Plain","t":2,"b":"Steppe","d":{"NW":43,"SE":192,"SW":169}},{"n":"Dryvein Riverbed","t":4,"b":"Steppe","d":{"NW":40,"SW":193,"SE":46}},{"n":"Dryvein Steppe","t":4,"b":"Steppe","d":{"SE":15,"NW":45,"NE":66}},{"n":"Eldersleep","t":6,"b":null,"d":{"NW":90,"SW":92,"NE":21}},{"n":"Everwinter Crossing","t":2,"b":"Mountain","d":{"SE":242,"NW":55,"SW":51}},{"n":"Everwinter Expanse","t":3,"b":"Mountain","d":{"NW":57,"SE":52,"NE":179}},{"n":"Everwinter Gap","t":4,"b":"Mountain","d":{"SE":131,"NW":185,"NE":51}},{"n":"Everwinter Gorge","t":3,"b":"Mountain","d":{"NW":184,"SW":50,"NE":48,"SE":130}},{"n":"Everwinter Incline","t":4,"b":"Mountain","d":{"NW":49,"SW":14,"NE":54,"SE":184}},{"n":"Everwinter Passage","t":2,"b":"Mountain","d":{"SW":54,"SE":133,"NE":56}},{"n":"Everwinter Peak","t":3,"b":"Mountain","d":{"NE":53,"SW":52}},{"n":"Everwinter Plain","t":2,"b":"Mountain","d":{"SW":184,"SE":48,"NE":133}},{"n":"Everwinter Reach","t":1,"b":"Mountain","d":{"NW":13,"SW":53}},{"n":"Everwinter Shores","t":2,"b":"Mountain","d":{"NE":178,"SE":49}},{"n":"Eye of the Forest","t":4,"b":null,"d":{"SE":88,"NW":67,"SW":83}},{"n":"Farshore Bay","t":1,"b":"Steppe","d":{"NE":194,"NW":60}},{"n":"Farshore Cape","t":2,"b":"Steppe","d":{"SE":59,"NE":64}},{"n":"Farshore Drylands","t":3,"b":"Steppe","d":{"NE":62,"NW":127}},{"n":"Farshore Esker","t":3,"b":"Steppe","d":{"SW":61,"NW":128,"SE":63,"NE":251}},{"n":"Farshore Heath","t":2,"b":"Steppe","d":{"SE":195,"NW":62}},{"n":"Farshore Lagoon","t":2,"b":"Steppe","d":{"SE":194,"SW":60}},{"n":"Firesink Caldera","t":2,"b":"Mountain","d":{"SE":215,"NE":111,"SW":66,"NW":205}},{"n":"Firesink Trench","t":3,"b":"Mountain","d":{"SW":46,"NW":204,"NE":65}},{"n":"Flammog Desolation","t":4,"b":"Mountain","d":{"SW":69,"NW":163,"SE":58}},{"n":"Flammog Fork","t":5,"b":"Mountain","d":{"SW":159,"NW":217,"NE":69}},{"n":"Flammog Valley","t":5,"b":"Mountain","d":{"NE":67,"SW":68,"NW":162,"SE":83}},{"n":"Flatrock Cliffs","t":2,"b":"Highland","d":{"SW":71,"SE":103,"NW":238}},{"n":"Flatrock Plateau","t":2,"b":"Highland","d":{"NE":70,"SE":104,"NW":85}},{"n":"Floatshoal Bight","t":2,"b":"Mountain","d":{"NW":73}},{"n":"Floatshoal Fissure","t":2,"b":"Mountain","d":{"SW":74,"NW":24}},{"n":"Floatshoal Floe","t":3,"b":"Mountain","d":{"SW":161,"NE":73,"SE":183}},{"n":"Frostbite Chasm","t":2,"b":"Mountain","d":{"NW":166,"NE":235,"SE":76}},{"n":"Frostbite Mountain","t":1,"b":"Mountain","d":{"SE":269,"SW":272,"NW":75,"NE":236}},{"n":"Frostpeak Ascent","t":1,"b":"Mountain","d":{"NW":243,"SW":72,"NE":78}},{"n":"Frostpeak Vista","t":1,"b":"Mountain","d":{"SW":77}},{"n":"Frostseep Crevasse","t":2,"b":"Mountain","d":{"SW":80,"SE":265}},{"n":"Frostseep Ravine","t":2,"b":"Mountain","d":{"SE":263,"NE":79,"NW":256}},{"n":"Frostspring Passage","t":2,"b":"Mountain","d":{"SW":170,"NW":192,"NE":82}},{"n":"Frostspring Volcano","t":3,"b":"Mountain","d":{"SW":81,"SE":209,"NE":15}},{"n":"Giantweald Copse","t":4,"b":"Forest","d":{"NE":58,"NW":69,"SW":87}},{"n":"Giantweald Dale","t":2,"b":"Forest","d":{"NW":88,"NE":85,"SE":136,"SW":138}},{"n":"Giantweald Edge","t":2,"b":"Forest","d":{"SW":84,"SE":71,"NW":36}},{"n":"Giantweald Glade","t":2,"b":"Forest","d":{"NW":87}},{"n":"Giantweald Roots","t":4,"b":"Forest","d":{"SW":219,"SE":86,"NE":83}},{"n":"Giantweald Woods","t":3,"b":"Forest","d":{"SE":84,"NW":58,"NE":36}},{"n":"Glacierbreak Summit","t":1,"b":"Mountain","d":{"NW":117,"NE":180}},{"n":"Glacierfall Canyon","t":6,"b":"Mountain","d":{"SE":47,"SW":17}},{"n":"Glacierfall Cross","t":5,"b":"Mountain","d":{"SE":95,"NE":131,"SW":93}},{"n":"Glacierfall Fissure","t":6,"b":"Mountain","d":{"NE":47,"NW":17}},{"n":"Glacierfall Pass","t":5,"b":"Mountain","d":{"NE":91,"NW":29}},{"n":"Glacierfall Passage","t":2,"b":"Mountain","d":{"SW":95,"SE":23}},{"n":"Glacierfall Valley","t":4,"b":"Mountain","d":{"SE":21,"NW":91,"NE":94}},{"n":"Gravemound Brim","t":2,"b":"Highland","d":{"NE":100,"SE":97}},{"n":"Gravemound Cliffs","t":2,"b":"Highland","d":{"NE":98,"NW":96}},{"n":"Gravemound Hills","t":3,"b":"Highland","d":{"NW":100,"SE":127,"SW":97}},{"n":"Gravemound Knoll","t":3,"b":"Highland","d":{"NE":18,"NW":101,"SE":128}},{"n":"Gravemound Slope","t":2,"b":"Highland","d":{"NE":101,"SE":98,"SW":96}},{"n":"Greenhollow Copse","t":2,"b":"Forest","d":{"NE":102,"SE":99,"SW":100,"NW":275}},{"n":"Greenhollow Vale","t":3,"b":"Forest","d":{"NW":105,"NE":106,"SW":101}},{"n":"Greenshore Bay","t":2,"b":"Forest","d":{"SW":104,"NW":70}},{"n":"Greenshore Peninsula","t":2,"b":"Forest","d":{"NE":103,"SW":187,"NW":71}},{"n":"Highstone Grassland","t":2,"b":"Highland","d":{"SE":102,"NW":271}},{"n":"Highstone Loch","t":4,"b":"Highland","d":{"SW":102,"SE":2}},{"n":"Highstone Meadow","t":4,"b":"Highland","d":{"NE":155,"SW":109,"NW":110}},{"n":"Highstone Mound","t":3,"b":"Highland","d":{"SE":110,"NW":228}},{"n":"Highstone Plains","t":3,"b":"Highland","d":{"SW":106,"NE":107}},{"n":"Highstone Plateau","t":3,"b":"Highland","d":{"SE":107,"SW":9,"NW":108}},{"n":"Hightree Borderlands","t":2,"b":"Forest","d":{"SW":65,"NE":218,"SE":116}},{"n":"Hightree Cliffs","t":1,"b":"Forest","d":{"SW":246}},{"n":"Hightree Dale","t":1,"b":"Forest","d":{"SE":117}},{"n":"Hightree Enclave","t":1,"b":"Forest","d":{"NW":119,"SE":112}},{"n":"Hightree Glade","t":1,"b":"Forest","d":{"NE":117,"SE":112}},{"n":"Hightree Hillock","t":1,"b":"Forest","d":{"NW":111,"SE":122}},{"n":"Hightree Isle","t":1,"b":"Forest","d":{"SW":115,"SE":89,"NE":232,"NW":113}},{"n":"Hightree Lake","t":1,"b":"Forest","d":{"NE":120,"NW":218}},{"n":"Hightree Levee","t":1,"b":"Forest","d":{"SW":214,"NW":215,"SE":114,"NE":122}},{"n":"Hightree Pass","t":1,"b":"Forest","d":{"SW":118,"NE":138,"SE":121}},{"n":"Hightree Steep","t":1,"b":"Forest","d":{"NW":120}},{"n":"Hightree Strand","t":1,"b":"Forest","d":{"SW":119,"NW":116}},{"n":"Iceburn Cliffs","t":2,"b":"Mountain","d":{"NW":23,"SW":125,"SE":161}},{"n":"Iceburn Firth","t":6,"b":"Mountain","d":{"NE":126}},{"n":"Iceburn Peaks","t":4,"b":"Mountain","d":{"NE":123,"NW":21,"SW":126,"SE":163}},{"n":"Iceburn Tundra","t":6,"b":"Mountain","d":{"NE":125,"SW":124}},{"n":"Longfen Arms","t":3,"b":"Swamp","d":{"NW":98,"SW":156,"SE":61}},{"n":"Longfen Marsh","t":4,"b":"Swamp","d":{"SE":62,"NW":99}},{"n":"Longfen Veins","t":4,"b":"Swamp","d":{"NW":18,"SE":251}},{"n":"Meltwater Bog","t":3,"b":"Swamp","d":{"SW":131,"NW":51}},{"n":"Meltwater Channel","t":3,"b":"Swamp","d":{"SW":91,"NW":50,"NE":130}},{"n":"Meltwater Delta","t":2,"b":"Swamp","d":{"SE":241,"NW":133}},{"n":"Meltwater Sump","t":2,"b":"Swamp","d":{"SE":132,"SW":55,"NW":53}},{"n":"Mudfoot Mounds","t":1,"b":"Swamp","d":{"NE":135}},{"n":"Mudfoot Sump","t":1,"b":"Swamp","d":{"SW":134,"NE":275}},{"n":"Munten Fell","t":2,"b":"Mountain","d":{"SE":233,"SW":137,"NW":84}},{"n":"Munten Rise","t":1,"b":"Mountain","d":{"SE":234,"NW":138,"NE":136}},{"n":"Munten Tundra","t":2,"b":"Mountain","d":{"NE":84,"SW":120,"SE":137}},{"n":"Murdergulch Cross","t":4,"b":"Highland","d":{"SE":140,"SW":143,"NW":267,"NE":248}},{"n":"Murdergulch Divide","t":5,"b":"Highland","d":{"SE":141,"SW":20,"NE":32,"NW":139}},{"n":"Murdergulch Gap","t":6,"b":"Highland","d":{"SE":142,"SW":8,"NW":140}},{"n":"Murdergulch Ravine","t":6,"b":"Highland","d":{"NW":141,"SW":19}},{"n":"Murdergulch Trail","t":4,"b":"Highland","d":{"NE":139,"SW":27}},{"n":"Northstrand Beach","t":1,"b":"Steppe","d":{"NW":145,"SW":225}},{"n":"Northstrand Dunes","t":1,"b":"Steppe","d":{"SE":144,"SW":227}},{"n":"Parchsand Cliffs","t":4,"b":"Steppe","d":{"SW":106,"NE":150,"SE":147}},{"n":"Parchsand Drought","t":5,"b":"Steppe","d":{"SE":7,"NE":154,"NW":146}},{"n":"Razorrock Bank","t":5,"b":"Highland","d":{"NW":154,"NE":151}},{"n":"Razorrock Chasm","t":6,"b":"Highland","d":{"SW":154,"NW":152,"NE":19}},{"n":"Razorrock Edge","t":5,"b":"Highland","d":{"SE":154,"NW":155,"SW":146}},{"n":"Razorrock Gulch","t":6,"b":"Highland","d":{"SW":148,"SE":153,"NE":200}},{"n":"Razorrock Passage","t":5,"b":"Highland","d":{"NW":26,"SE":149}},{"n":"Razorrock Ravine","t":6,"b":"Highland","d":{"NW":151,"NE":203,"SW":201}},{"n":"Razorrock Valley","t":5,"b":"Highland","d":{"SW":147,"NE":149,"SE":148,"NW":150}},{"n":"Razorrock Verge","t":5,"b":"Highland","d":{"NW":0,"SE":150,"SW":107}},{"n":"Redtree Enclave","t":2,"b":"Highland","d":{"NE":127}},{"n":"Rivercopse Crossing","t":5,"b":"Forest","d":{"NE":159,"SW":160,"SE":158,"NW":230}},{"n":"Rivercopse Curve","t":4,"b":"Forest","d":{"NE":219,"NW":157,"SW":205}},{"n":"Rivercopse Fount","t":5,"b":"Forest","d":{"NW":216,"SE":219,"NE":68,"SW":157}},{"n":"Rivercopse Path","t":5,"b":"Forest","d":{"NE":157,"NW":202}},{"n":"Runnelvein Bog","t":3,"b":"Swamp","d":{"NE":74,"NW":123,"SW":163}},{"n":"Runnelvein Sink","t":5,"b":"Swamp","d":{"SE":69,"NE":163}},{"n":"Runnelvein Slough","t":5,"b":"Swamp","d":{"NE":161,"SW":162,"SE":67,"NW":125}},{"n":"Sandmount Ascent","t":2,"b":"Steppe","d":{"NE":12,"SE":167}},{"n":"Sandmount Desert","t":2,"b":"Steppe","d":{"SE":270,"NE":166}},{"n":"Sandmount Esker","t":2,"b":"Steppe","d":{"SE":75,"SW":165}},{"n":"Sandmount Strand","t":2,"b":"Steppe","d":{"NE":11,"NW":164,"SW":235}},{"n":"Sandrift Coast","t":1,"b":"Steppe","d":{"NE":170,"SE":171}},{"n":"Sandrift Dunes","t":1,"b":"Steppe","d":{"SE":174,"SW":172,"NE":44}},{"n":"Sandrift Expanse","t":1,"b":"Steppe","d":{"SE":188,"NE":81,"NW":174,"SW":168}},{"n":"Sandrift Fringe","t":1,"b":"Steppe","d":{}},{"n":"Sandrift Prairie","t":1,"b":"Steppe","d":{"NW":194,"NE":169}},{"n":"Sandrift Shore","t":1,"b":"Steppe","d":{"SE":171}},{"n":"Sandrift Steppe","t":1,"b":"Steppe","d":{"NW":169,"SE":170,"NE":192}},{"n":"Scuttlesink Marsh","t":3,"b":"Swamp","d":{"NE":13,"NW":177}},{"n":"Scuttlesink Mouth","t":2,"b":"Swamp","d":{"SE":13,"SW":177}},{"n":"Scuttlesink Pools","t":2,"b":"Swamp","d":{"SE":175,"NE":176,"NW":225}},{"n":"Shaleheath Hills","t":2,"b":"Highland","d":{"NW":226,"SE":179,"SW":57}},{"n":"Shaleheath Steep","t":3,"b":"Highland","d":{"SW":49,"NW":178}},{"n":"Skullmarsh Lower","t":1,"b":"Swamp","d":{"SW":89,"NE":181,"NW":232}},{"n":"Skullmarsh Upper","t":1,"b":"Swamp","d":{"SW":180,"NW":231}},{"n":"Skylake Bridge","t":3,"b":"Highland","d":{"NE":222,"NW":73,"SW":183}},{"n":"Skylake Hinterlands","t":4,"b":"Highland","d":{"NW":74,"NE":182}},{"n":"Skysand Plateau","t":3,"b":"Steppe","d":{"NE":55,"NW":52,"SE":51}},{"n":"Skysand Ridge","t":4,"b":"Steppe","d":{"SE":50,"SW":34}},{"n":"Slakesands Canyon","t":2,"b":"Steppe","d":{"NW":187}},{"n":"Slakesands Mesa","t":2,"b":"Steppe","d":{"SE":186,"NE":104,"SW":231}},{"n":"Southgrove Copse","t":2,"b":"Forest","d":{"NE":190,"SE":189,"NW":170}},{"n":"Southgrove Escarp","t":2,"b":"Forest","d":{"NE":208,"NW":188}},{"n":"Southgrove Thicket","t":2,"b":"Forest","d":{"SE":208,"SW":188,"NE":209}},{"n":"Springsump Basin","t":3,"b":"Swamp","d":{"SW":192,"NW":193}},{"n":"Springsump Melt","t":2,"b":"Swamp","d":{"SE":81,"NE":191,"NW":44,"SW":174}},{"n":"Springsump Wetland","t":3,"b":"Swamp","d":{"NW":41,"NE":45,"SE":191}},{"n":"Stonelake Fields","t":1,"b":"Highland","d":{"NE":195,"SW":59,"NW":64,"SE":172}},{"n":"Stonelake Hillock","t":2,"b":"Highland","d":{"SW":194,"NE":43,"NW":63}},{"n":"Stonemouth Bay","t":2,"b":"Highland","d":{"SE":197,"SW":209}},{"n":"Stonemouth Northbluff","t":2,"b":"Highland","d":{"SE":247,"NW":196}},{"n":"Stonemouth Southbluff","t":3,"b":"Highland","d":{}},{"n":"Sunfang Approach","t":5,"b":"Steppe","d":{"NE":202,"SE":42,"NW":201}},{"n":"Sunfang Cliffs","t":6,"b":"Steppe","d":{"SE":203,"SW":151}},{"n":"Sunfang Dawn","t":5,"b":"Steppe","d":{"NE":153,"SE":199,"SW":3}},{"n":"Sunfang Ravine","t":5,"b":"Steppe","d":{"SE":160,"SW":199}},{"n":"Sunfang Wasteland","t":6,"b":"Steppe","d":{"SE":230,"NW":200,"SW":153}},{"n":"Sunkenbough Spring","t":4,"b":"Swamp","d":{"NW":42,"NE":205,"SE":66}},{"n":"Sunkenbough Woods","t":4,"b":"Swamp","d":{"SE":65,"SW":204,"NE":158}},{"n":"Sunstrand Delta","t":1,"b":"Steppe","d":{"NE":198,"SW":207}},{"n":"Sunstrand Dunes","t":1,"b":"Steppe","d":{"NW":208,"NE":206}},{"n":"Sunstrand Quicksands","t":2,"b":"Steppe","d":{"NE":198,"NW":190,"SW":189,"SE":207}},{"n":"Sunstrand Shoal","t":3,"b":"Steppe","d":{"SW":190,"NW":82,"NE":196}},{"n":"Swiftsands Basin","t":1,"b":"Steppe","d":{"SE":212,"NW":223}},{"n":"Swiftsands Chaparral","t":2,"b":"Steppe","d":{"SW":239,"NE":212,"NW":224}},{"n":"Swiftsands Plain","t":1,"b":"Steppe","d":{"NW":210,"SW":211}},{"n":"Thirstwater Gully","t":2,"b":"Steppe","d":{"SE":214,"NE":215}},{"n":"Thirstwater Steppe","t":2,"b":"Steppe","d":{"NW":213,"NE":119,"SE":247}},{"n":"Thirstwater Waste","t":2,"b":"Steppe","d":{"NW":65,"SE":119,"SW":213}},{"n":"Thunderrock Ascent","t":6,"b":"Highland","d":{"SE":159}},{"n":"Thunderrock Draw","t":6,"b":"Highland","d":{"SW":216,"NW":124,"SE":68}},{"n":"Thunderrock Rapids","t":2,"b":"Highland","d":{"SW":111,"SE":118}},{"n":"Thunderrock Upland","t":4,"b":"Highland","d":{"SW":158,"NW":159,"NE":87}},{"n":"Timberscar Copse","t":2,"b":"Forest","d":{"SW":254,"SE":35,"NE":38}},{"n":"Timberscar Dell","t":2,"b":"Forest","d":{"NW":254,"NE":35,"SW":266}},{"n":"Timberslope Bridge","t":2,"b":"Forest","d":{"NE":224,"SW":182,"SE":239}},{"n":"Timberslope Dell","t":2,"b":"Forest","d":{"SW":72}},{"n":"Timberslope Grove","t":2,"b":"Forest","d":{"SE":211,"NW":223,"SW":222}},{"n":"Timbertop Dale","t":1,"b":"Forest","d":{"SE":177,"NW":227,"NE":144,"SW":226}},{"n":"Timbertop Escarp","t":1,"b":"Forest","d":{"SE":178,"NE":225}},{"n":"Timbertop Wood","t":1,"b":"Forest","d":{"NE":145,"SE":225}},{"n":"Twinchannel Narrows","t":3,"b":"Swamp","d":{"SE":108,"NE":229}},{"n":"Unhallowed Cloister","t":4,"b":null,"d":{"SW":228,"NW":11,"SE":1,"NE":263}},{"n":"Wailing Bulwark","t":6,"b":null,"d":{"NW":203,"SE":157}},{"n":"Watchwood Bluffs","t":1,"b":"Forest","d":{"SW":232,"NW":234,"SE":181,"NE":187}},{"n":"Watchwood Grove","t":1,"b":"Forest","d":{"SW":117,"NE":231,"SE":180}},{"n":"Watchwood Lakeside","t":2,"b":"Forest","d":{"SW":234,"NW":136}},{"n":"Watchwood Precipice","t":1,"b":"Forest","d":{"NW":137,"NE":233,"SE":231}},{"n":"Westweald Shore","t":2,"b":"Forest","d":{"SE":236,"NE":167,"SW":75}},{"n":"Westweald Thicket","t":2,"b":"Forest","d":{"SW":76,"NW":235}},{"n":"Wetgrave Bog","t":2,"b":"Swamp","d":{"NW":239,"SW":238}},{"n":"Wetgrave Marsh","t":2,"b":"Swamp","d":{"NW":37,"SE":70,"NE":237}},{"n":"Wetgrave Swale","t":3,"b":"Swamp","d":{"SE":237,"NE":211,"NW":222}},{"n":"Whitebank Cross","t":1,"b":"Mountain","d":{"SE":22,"SW":23,"NW":245}},{"n":"Whitebank Descent","t":1,"b":"Mountain","d":{"NW":132,"SW":242}},{"n":"Whitebank Ridge","t":1,"b":"Mountain","d":{"SE":244,"NW":48,"NE":241}},{"n":"Whitebank Shore","t":1,"b":"Mountain","d":{"SE":77,"SW":22}},{"n":"Whitebank Stream","t":1,"b":"Mountain","d":{"NW":242,"SW":245}},{"n":"Whitebank Wall","t":1,"b":"Mountain","d":{"NE":244,"SE":240}},{"n":"Whitecliff Expanse","t":2,"b":"Mountain","d":{"NE":112,"NW":247}},{"n":"Whitecliff Peak","t":2,"b":"Mountain","d":{"SE":246}},{"n":"Whitepeak Ascent","t":4,"b":"Mountain","d":{"NW":249,"SW":139,"NE":31}},{"n":"Whitepeak Spring","t":3,"b":"Mountain","d":{"SE":248,"SW":267,"NW":266}},{"n":"Whitepeak Tundra","t":3,"b":"Mountain","d":{"NE":30,"SE":31}},{"n":"Whitewall Pass","t":4,"b":"Mountain","d":{"NW":129,"SW":62,"SE":252}},{"n":"Whitewall Ridge","t":4,"b":"Mountain","d":{"NE":6,"NW":251}},{"n":"Widemoor Delta","t":1,"b":"Swamp","d":{"SE":257}},{"n":"Widemoor End","t":1,"b":"Swamp","d":{"SE":221,"NW":259,"NE":220}},{"n":"Widemoor Estuary","t":1,"b":"Swamp","d":{"SE":261,"SW":257}},{"n":"Widemoor Fen","t":2,"b":"Swamp","d":{"SE":80,"NE":257}},{"n":"Widemoor Flats","t":1,"b":"Swamp","d":{"SW":256,"NE":255,"NW":253}},{"n":"Widemoor Hills","t":1,"b":"Swamp","d":{"NW":260,"NE":39,"SW":259}},{"n":"Widemoor Pool","t":1,"b":"Swamp","d":{"NE":258,"SE":254}},{"n":"Widemoor Shore","t":1,"b":"Swamp","d":{"SE":258}},{"n":"Widemoor Woods","t":1,"b":"Swamp","d":{"NW":255,"SE":262,"NE":268}},{"n":"Willowshade Hills","t":2,"b":"Swamp","d":{"NW":261,"SW":265}},{"n":"Willowshade Icemarsh","t":3,"b":"Swamp","d":{"NW":80,"SE":25,"SW":229}},{"n":"Willowshade Lake","t":3,"b":"Swamp","d":{"SW":25,"NW":265,"NE":267}},{"n":"Willowshade Mire","t":2,"b":"Swamp","d":{"NE":262,"SE":264,"NW":79}},{"n":"Willowshade Pools","t":2,"b":"Swamp","d":{"SE":249,"NE":221,"NW":268}},{"n":"Willowshade Sink","t":3,"b":"Swamp","d":{"NE":249,"SW":264,"SE":139}},{"n":"Willowshade Wetlands","t":1,"b":"Swamp","d":{"SW":261,"SE":266}},{"n":"Windgrass Border","t":1,"b":"Highland","d":{"SE":271,"NW":76,"NE":10}},{"n":"Windgrass Coast","t":1,"b":"Highland","d":{"SE":272,"NW":165,"SW":273}},{"n":"Windgrass Fields","t":1,"b":"Highland","d":{"NE":9,"SE":105,"NW":269,"SW":274}},{"n":"Windgrass Gully","t":1,"b":"Highland","d":{"NE":76,"NW":270}},{"n":"Windgrass Precipice","t":1,"b":"Highland","d":{"NE":270}},{"n":"Windgrass Rill","t":1,"b":"Highland","d":{"NE":271,"SE":275}},{"n":"Windgrass Terrace","t":1,"b":"Highland","d":{"NW":274,"SW":135,"SE":101}}];
+
+const NAMES = ZONES.map((z,i)=>({i, n:z.n, low:z.n.toLowerCase(), t:z.t, b:z.b}));
+const OPP = {NE:'SW',SW:'NE',NW:'SE',SE:'NW'};
+const MAXD = 8, DIRS=['NW','NE','SE','SW'];
+
+let state = { diff:3, start:0, dirs:[], stops:[], answer:0, done:false, guesses:0 };
+let score = { streak:0, best:0, solved:0 };
+
+/* ---------- puzzle generation ---------- */
+function genPuzzle(diff){
+  for(let tries=0; tries<4000; tries++){
+    let cur = Math.floor(Math.random()*ZONES.length);
+    let start = cur, prev=null, dirs=[], stops=[cur], ok=true;
+    for(let s=0;s<diff;s++){
+      const opts = Object.keys(ZONES[cur].d).filter(dr=>dr!==prev);
+      if(!opts.length){ ok=false; break; }
+      const dr = opts[Math.floor(Math.random()*opts.length)];
+      cur = ZONES[cur].d[dr]; prev = OPP[dr]; dirs.push(dr); stops.push(cur);
+    }
+    if(ok) return {start, dirs, stops, answer:cur};
+  }
+  return null;
+}
+
+/* ---------- render ---------- */
+function render(){
+  const z = ZONES[state.start];
+  document.getElementById('startName').textContent = z.n;
+  document.getElementById('startMeta').innerHTML = `TIER <b>${z.t}</b> &nbsp;·&nbsp; <b>${z.b||'—'}</b>`;
+
+  const route = document.getElementById('route'); route.innerHTML=''; route.className='route';
+  state.dirs.forEach((dr,idx)=>{
+    if(idx>0){
+      const a=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      a.setAttribute('viewBox','0 0 24 24'); a.setAttribute('class','arrow'); a.setAttribute('width','20'); a.setAttribute('height','20');
+      a.innerHTML='<path d="M4 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+      route.appendChild(a);
+    }
+    const wp=document.createElement('div'); wp.className='wp';
+    wp.innerHTML=`<span class="ord">${String(idx+1).padStart(2,'0')}</span>
+      <div class="diamond"><span>${dr}</span></div>
+      <div class="stop">${ZONES[state.stops[idx+1]].n}</div>`;
+    wp.addEventListener('mouseenter',()=>lightSpoke(dr));
+    wp.addEventListener('mouseleave',()=>lightSpoke(null));
+    route.appendChild(wp);
+  });
+
+  document.getElementById('guess').value='';
+  document.getElementById('guess').disabled=false;
+  document.getElementById('confirm').disabled=false;
+  document.getElementById('result').textContent=''; document.getElementById('result').className='result';
+  document.getElementById('field')?.classList.remove('wrong');
+  closeAc();
+  animateRoute();
+}
+
+function lightSpoke(dr){
+  DIRS.forEach(d=>document.getElementById('sp-'+d).classList.toggle('lit', d===dr));
+}
+let animTimer=null;
+function animateRoute(){
+  if(animTimer) clearTimeout(animTimer);
+  const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const wps=[...document.querySelectorAll('.wp')];
+  wps.forEach(w=>w.classList.remove('active'));
+  if(reduce){ lightSpoke(null); return; }
+  let i=0;
+  (function step(){
+    wps.forEach(w=>w.classList.remove('active'));
+    if(i<state.dirs.length){
+      wps[i].classList.add('active'); lightSpoke(state.dirs[i]);
+      i++; animTimer=setTimeout(step, 620);
+    } else { lightSpoke(null); }
+  })();
+}
+
+/* ---------- autocomplete ---------- */
+const gi=document.getElementById('guess'), acx=document.getElementById('acx');
+let acItems=[], acSel=-1;
+function norm(s){return s.toLowerCase().replace(/\s+/g,' ').trim();}
+function openAc(){
+  const q=norm(gi.value);
+  if(!q){ closeAc(); return; }
+  const starts=[], contains=[];
+  for(const it of NAMES){
+    const p=it.low.indexOf(q);
+    if(p===0) starts.push(it); else if(p>0) contains.push(it);
+  }
+  acItems=[...starts,...contains].slice(0,8); acSel=-1;
+  if(!acItems.length){ closeAc(); return; }
+  acx.innerHTML=acItems.map((it,k)=>`<div data-k="${k}" role="option">${it.n}<span class="b">T${it.t} · ${it.b||''}</span></div>`).join('');
+  acx.classList.add('open');
+  [...acx.children].forEach(ch=>{
+    ch.addEventListener('mousedown',e=>{e.preventDefault(); pick(+ch.dataset.k);});
+  });
+}
+function closeAc(){acx.classList.remove('open'); acItems=[]; acSel=-1;}
+function pick(k){ gi.value=acItems[k].n; closeAc(); gi.focus(); }
+function moveSel(d){
+  if(!acItems.length) return;
+  acSel=(acSel+d+acItems.length)%acItems.length;
+  [...acx.children].forEach((c,i)=>c.classList.toggle('sel',i===acSel));
+}
+gi.addEventListener('input',()=>{ if(!state.done) openAc(); });
+gi.addEventListener('keydown',e=>{
+  if(acx.classList.contains('open')){
+    if(e.key==='ArrowDown'){e.preventDefault(); moveSel(1); return;}
+    if(e.key==='ArrowUp'){e.preventDefault(); moveSel(-1); return;}
+    if(e.key==='Escape'){closeAc(); return;}
+    if(e.key==='Tab' && acItems.length){e.preventDefault(); pick(acSel>=0?acSel:0); return;}
+    if(e.key==='Enter'){ if(acSel>=0){e.preventDefault(); pick(acSel); return;} }
+  }
+  if(e.key==='Enter'){ e.preventDefault(); checkAnswer(); }
+});
+document.addEventListener('click',e=>{ if(!e.target.closest('.field')) closeAc(); });
+
+/* ---------- check / reveal ---------- */
+function finishGates(){ // reveal intermediate stops on the ribbon
+  document.getElementById('route').classList.add('revealed');
+  [...document.querySelectorAll('.wp')].forEach(w=>w.classList.remove('active'));
+  lightSpoke(null);
+}
+function checkAnswer(){
+  if(state.done) return;
+  const g=norm(gi.value);
+  if(!g) return;
+  state.guesses++;
+  if(g===norm(ZONES[state.answer].n)){
+    state.done=true; closeAc();
+    finishGates();
+    const r=document.getElementById('result'); r.className='result win';
+    r.textContent=`Arrived. ${ZONES[state.answer].n} is exactly where those gates lead.`;
+    score.solved++; score.streak++; score.best=Math.max(score.best,score.streak);
+    gi.disabled=true; document.getElementById('confirm').disabled=true;
+    updateScore();
+  } else {
+    const f=gi.closest('.field'); f.classList.add('wrong'); setTimeout(()=>f.classList.remove('wrong'),340);
+    const r=document.getElementById('result'); r.className='result miss';
+    const known = NAMES.some(n=>n.low===g);
+    r.textContent = known ? 'Not there — retrace the gates and try again.'
+                          : 'No map by that name. Use the suggestions to pick a valid map.';
+  }
+}
+function giveUp(){
+  if(state.done) return;
+  state.done=true; closeAc(); finishGates();
+  const r=document.getElementById('result'); r.className='result rev';
+  r.textContent=`The route ends at ${ZONES[state.answer].n}.`;
+  score.streak=0; updateScore();
+  gi.disabled=true; document.getElementById('confirm').disabled=true;
+}
+function updateScore(){
+  document.getElementById('sStreak').textContent=score.streak;
+  document.getElementById('sBest').textContent=score.best;
+  document.getElementById('sSolved').textContent=score.solved;
+}
+
+/* ---------- new route / difficulty ---------- */
+function newRoute(){
+  const p=genPuzzle(state.diff);
+  if(!p){ return; }
+  state.start=p.start; state.dirs=p.dirs; state.stops=p.stops; state.answer=p.answer;
+  state.done=false; state.guesses=0;
+  render(); gi.focus();
+}
+function buildDiff(){
+  const row=document.getElementById('diffRow');
+  for(let d=1; d<=MAXD; d++){
+    const b=document.createElement('button'); b.textContent=d; b.setAttribute('aria-pressed', d===state.diff);
+    b.addEventListener('click',()=>{ state.diff=d; [...row.children].forEach(c=>c.setAttribute('aria-pressed', +c.textContent===d)); newRoute(); });
+    row.appendChild(b);
+  }
+}
+
+document.getElementById('confirm').addEventListener('click',checkAnswer);
+document.getElementById('give').addEventListener('click',giveUp);
+document.getElementById('fresh').addEventListener('click',newRoute);
+buildDiff(); newRoute();
+</script>
+</body>
+</html>
