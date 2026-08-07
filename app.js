@@ -294,6 +294,7 @@ function newGame(){
   $('finish').classList.remove('show');
   ['rail0','rail1','rail2'].forEach(r=>$(r).classList.remove('done','active')); $('rail0').classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'}); $('g1').focus();
+  unlockRound3();
 }
 
 $('b1').addEventListener('click',submit1); ac1=autocomplete($('g1'),$('ac1'),MAP_SRC,submit1);
