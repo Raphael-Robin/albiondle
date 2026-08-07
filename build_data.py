@@ -89,8 +89,7 @@ def bd_bucket(ty, debuff):
     if ty == "crowdcontrolresistance": return "CC Resistance"
     if ty == "attackrangebonus":       return "Attack Range"
     if ty == "focusfireprotectionpenetration": return "Resilience Penetration"
-    if ty == "threatbonus":            return "Threat"
-    return None                        # energyregenerationbonus & everything else -> ignored
+    return None                        # threatbonus, energyregenerationbonus & everything else -> ignored
 
 # --- immunity sub-types (from cceffectimmunity `type=`) ---
 CC_IMMUNITY = {"stun":"Immune to Stun","root":"Immune to Root","slow":"Immune to Slow",
@@ -115,6 +114,9 @@ PURGE_IMMUNITY_IDS = {
 # Cast-range overrides for the rare ability the auto-rule still gets wrong. Add "SPELL_ID": "Area"
 # (or "Single-target"/"Self") as you find them in playtesting.
 CAST_RANGE_OVERRIDES = {
+    "LEVITATE": "Self",             # self-only channel — restores your own HP/energy/resistances
+    "OUTOFCOMBATHEAL": "Self",      # Mend Wounds — bandages yourself out of combat
+    "AUTOFIRE2": "Single-target",   # Auto Fire — focuses one target; its AoE scaling is incidental
 }
 # ------------------------------------------------------------------------------------------------
 
@@ -145,6 +147,22 @@ def hostile_area(blob):
                 if float(r) >= 2: return True
             except ValueError:
                 pass
+    return False
+
+# elements that are beneficial when aimed at allies (heal / HoT / buff / applied buff-spell).
+# Deliberately excludes <damageshield>, so a charged ally shield (Shield Charge) stays single-target.
+ALLY_HEALBUFF = ("directattributechange","attributechangeovertime","buffovertime","healovertime","applyspell")
+ALLY_TARGETS = ("friendall","friendother","friendotherplayers","ally","allies","friend")
+def ally_heal_area(blob):
+    """True if an area radius (>=2) sits on a friend-targeted heal/buff -> reaches multiple allies."""
+    for el in ALLY_HEALBUFF:
+        for m in re.finditer(r'<'+el+r'\b([^>]*)', blob):
+            at = attrs(m.group(1)); r = at.get("effectarearadius")
+            if r and at.get("target") in ALLY_TARGETS:
+                try:
+                    if float(r) >= 2: return True
+                except ValueError:
+                    pass
     return False
 
 def load(src, name):
@@ -421,14 +439,20 @@ def build_abilities(items_xml, spells_xml, loc_xml):
             for m in re.finditer(r'<'+el+r'\b([^>]*)', blob):
                 t=attrs(m.group(1)).get("target")
                 if t: tgts.add(t)
-        affects_other = (any(x in tags for x in ("Damage","Crowd Control","Debuff"))
+        tag_offense = any(x in tags for x in ("Damage","Crowd Control","Debuff"))
+        # a reflect shield is cast on yourself; its "damage" is only reflected when hit, not actively
+        # aimed at anyone (e.g. Deflecting Spin, Inferno Shield, Retaliate) -> Self, not Single-target.
+        reflect_shield = (tag_offense and "reflectdamage" in blob.lower()
+                          and head.get("target")=="self" and not (tgts & TGT_OTHER))
+        affects_other = ((tag_offense and not reflect_shield)
                          or bool(tgts & TGT_OTHER)
                          or head.get("target") in TGT_OTHER)   # ability cast directly on an ally/enemy (e.g. Shield Charge)
         multi = bool(re.search(r'targetcount(?:value|duration)bonusfactor="[0-9.]*[1-9]', blob)
                      or re.search(r'<spelleffectarea\b', blob)
                      or re.search(r'maxtargets="(?:[2-9]|\d\d)"', blob)
                      or re.search(r'deletewhenmaxtargetshit="(?:[2-9]|\d\d)"', blob)
-                     or hostile_area(blob))
+                     or hostile_area(blob)
+                     or ally_heal_area(blob))
         cr = "Self" if not affects_other else ("Area" if multi else "Single-target")
         if sp in CAST_RANGE_OVERRIDES: cr = CAST_RANGE_OVERRIDES[sp]
 
