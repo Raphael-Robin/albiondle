@@ -14,7 +14,8 @@ const ICON=id=>`https://render.albiononline.com/v1/spell/${id}.png?size=217`;
 
 const TAGS=['Damage','Crowd Control','Mobility','Debuff','Buff','Heal'];
 const DMG=['Physical','Magical'];
-const BD=['Resistances','Movement Speed','Ability Damage','Attack Speed','Shield','DoT','HoT','Other'];
+const BUFF=['Resistances','Movement Speed','Ability Damage','Attack Speed','Cast Rate','Cooldown Rate','Shield','HoT','Healing Cast','Healing Received','Max Health','Invulnerability','Immunity to Forced Movement','Other'];
+const DEBUFF=['Resistances','Ability Damage','Attack Speed','DoT','Healing Cast','Healing Received','Max Health','Other'];
 const CC=['Stun','Root','Slow','Silence','Interrupt','Sleep','Forced Movement'];
 const CT=['Instant','Cast time','Channeled'];
 const CR=['Self','Single-target','Area'];
@@ -177,13 +178,15 @@ function toggleBlock(id,show){const el=$(id); if(!show)el.querySelectorAll('butt
 function updateSubs(){
   const t=new Set(getSel($('tagChips')));
   toggleBlock('dmgChips',t.has('Damage'));
-  toggleBlock('bdChips',t.has('Buff')||t.has('Debuff'));
+  toggleBlock('bfChips',t.has('Buff'));
+  toggleBlock('dbChips',t.has('Debuff'));
   toggleBlock('ccChips',t.has('Crowd Control'));
 }
 function buildR3Chips(){
   chipGroup($('tagChips'),TAGS,true);
   chipGroup($('dmgChips'),DMG,true);
-  chipGroup($('bdChips'),BD,true);
+  chipGroup($('bfChips'),BUFF,true);
+  chipGroup($('dbChips'),DEBUFF,true);
   chipGroup($('ccChips'),CC,true);
   chipGroup($('ctChips'),CT,false);
   chipGroup($('crChips'),CR,false);
@@ -233,7 +236,7 @@ function colorOne(el,answer){
 }
 function submit3confirm(){
   if(r3done||r3stage!=='attrs')return; const a=ABILITIES[secretAb];
-  const gTags=getSel($('tagChips')), gDmg=getSel($('dmgChips')), gBd=getSel($('bdChips')), gCc=getSel($('ccChips'));
+  const gTags=getSel($('tagChips')), gDmg=getSel($('dmgChips')), gBf=getSel($('bfChips')), gDb=getSel($('dbChips')), gCc=getSel($('ccChips'));
   const gCt=getOne($('ctChips')), gCr=getOne($('crChips'));
   const ipSel=$('ipBtn').classList.contains('on'); const cdRaw=$('cdInput').value.trim();
   const cdVal=cdRaw===''?null:parseFloat(cdRaw);
@@ -246,8 +249,10 @@ function submit3confirm(){
   const tagsOk=setEq(gTags,a.tags); add('Tags',tagsOk,gTags.join(', '),a.tags.join(', ')); colorMulti($('tagChips'),a.tags);
   if(a.tags.includes('Damage')){const ok=setEq(gDmg,a.dmg); add('Damage type',ok,gDmg.join(', '),a.dmg.join(', ')); }
   colorMulti($('dmgChips'),a.tags.includes('Damage')?a.dmg:[]);
-  if(a.tags.includes('Buff')||a.tags.includes('Debuff')){const ok=setEq(gBd,a.bd); add('Buff/debuff type',ok,gBd.join(', '),a.bd.join(', ')); }
-  colorMulti($('bdChips'),(a.tags.includes('Buff')||a.tags.includes('Debuff'))?a.bd:[]);
+  if(a.tags.includes('Buff')){const ok=setEq(gBf,a.bf); add('Buff type',ok,gBf.join(', '),a.bf.join(', ')); }
+  colorMulti($('bfChips'),a.tags.includes('Buff')?a.bf:[]);
+  if(a.tags.includes('Debuff')){const ok=setEq(gDb,a.db); add('Debuff type',ok,gDb.join(', '),a.db.join(', ')); }
+  colorMulti($('dbChips'),a.tags.includes('Debuff')?a.db:[]);
   if(a.tags.includes('Crowd Control')){const ok=setEq(gCc,a.cc); add('CC type',ok,gCc.join(', '),a.cc.join(', ')); }
   colorMulti($('ccChips'),a.tags.includes('Crowd Control')?a.cc:[]);
   add('Cast type',gCt===a.ct,gCt,a.ct); colorOne($('ctChips'),a.ct);
@@ -277,9 +282,9 @@ function finishRound3(allCorrect){
 
 /* ===== new game ===== */
 function resetChips(){
-  ['tagChips','dmgChips','bdChips','ccChips','ctChips','crChips'].forEach(id=>
+  ['tagChips','dmgChips','bfChips','dbChips','ccChips','ctChips','crChips'].forEach(id=>
     $(id).querySelectorAll('button').forEach(b=>{b.className='';b.disabled=false;}));
-  $('dmgBlock').style.display='none'; $('bdBlock').style.display='none'; $('ccBlock').style.display='none';
+  $('dmgBlock').style.display='none'; $('bfBlock').style.display='none'; $('dbBlock').style.display='none'; $('ccBlock').style.display='none';
   $('cdInput').value=''; $('cdInput').disabled=false; $('ipBtn').className='ipbtn'; $('ipBtn').disabled=false;
   $('b3confirm').disabled=false; $('reveal3').innerHTML='';
 }
