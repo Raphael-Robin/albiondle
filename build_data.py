@@ -66,7 +66,7 @@ TAG_ORDER = ["dmg","cc","mobility","debuff","buff","heal"]
 
 # --- crowd-control kinds (keyword in the [cc] span -> label). knockback/pull/fear -> Forced Movement ---
 CC_KEYS = [
-    ("stun","Stun"),("root","Root"),("slow","Slow"),("silence","Silence"),("interrupt","Interrupt"),
+    ("stun","Stun"),("root","Root"),("slow","Slow"),("silenc","Silence"),("interrupt","Interrupt"),
     ("sleep","Sleep"),("asleep","Sleep"),
     ("knockback","Forced Movement"),("knock back","Forced Movement"),("pull","Forced Movement"),
     ("fear","Forced Movement"),("feared","Forced Movement"),("flee","Forced Movement"),
