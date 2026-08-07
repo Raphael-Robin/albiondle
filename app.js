@@ -1,5 +1,4 @@
 /* Albiondle game logic */
-const OPP={NE:'SW',SW:'NE',NW:'SE',SE:'NW'};
 const norm=s=>s.toLowerCase().replace(/\s+/g,' ').trim();
 const $=id=>document.getElementById(id);
 const setEq=(a,b)=>{const A=new Set(a),B=new Set(b);return A.size===B.size&&[...A].every(x=>B.has(x));};
@@ -66,9 +65,11 @@ function abilityAC(input, box, onEnter){
   function open(){
     const q=norm(input.value); if(!q){close();return;}
     const linesMatch=LINES.filter((l,k)=>LINE_LOW[k].includes(q));
+    const armorMatch = q.length>=3 && 'armor'.startsWith(q);   // typing "armor" lists all armor spells
     const starts=[],contains=[],lineSpells=[],seen=new Set();
     for(const it of AB_SRC){const p=it.low.indexOf(q); if(p===0){starts.push(it);seen.add(it.i);} else if(p>0){contains.push(it);seen.add(it.i);}}
-    if(linesMatch.length){for(const it of AB_SRC){if(seen.has(it.i))continue; if(it.line&&linesMatch.includes(it.line)){lineSpells.push(it);seen.add(it.i);}}}
+    if(linesMatch.length||armorMatch){for(const it of AB_SRC){if(seen.has(it.i))continue;
+      if((it.line&&linesMatch.includes(it.line))||(armorMatch&&!it.line)){lineSpells.push(it);seen.add(it.i);}}}
     items=[...starts,...contains,...lineSpells].slice(0,30); sel=-1;
     if(!items.length){close();return;}
     box.innerHTML=items.map(it=>`<div>${it.n}<span class="tag">${it.tag}</span></div>`).join('');
@@ -126,9 +127,13 @@ function finishRound1(){
 /* ===== ROUND 2 ===== */
 function genNav(start){
   for(let t=0;t<5000;t++){
-    const len=3+Math.floor(Math.random()*3); let cur=start,prev=null,gates=[],ok=true;
-    for(let s=0;s<len;s++){const opts=Object.keys(MAPS[cur].d).filter(d=>d!==prev); if(!opts.length){ok=false;break;}
-      const d=opts[Math.floor(Math.random()*opts.length)]; cur=MAPS[cur].d[d]; prev=OPP[d]; gates.push(d);}
+    const len=3+Math.floor(Math.random()*3); let cur=start,prevMap=-1,gates=[],ok=true;
+    for(let s=0;s<len;s++){
+      const opts=Object.keys(MAPS[cur].d).filter(d=>MAPS[cur].d[d]!==prevMap);
+      if(!opts.length){ok=false;break;}
+      const d=opts[Math.floor(Math.random()*opts.length)];
+      prevMap=cur; cur=MAPS[cur].d[d]; gates.push(d);
+    }
     if(ok&&cur!==start)return {gates,answer:cur};
   } return null;
 }

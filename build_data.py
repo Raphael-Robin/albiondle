@@ -185,7 +185,13 @@ def build_maps(world_xml):
     is_town = lambda t: ("PORTALCITY" in t or "REST" in t)
     towns = {cid for cid,c in clusters.items() if is_town(c["type"])}
 
-    def direction(dx,dy): return ("N" if dy>0 else "S")+("E" if dx>0 else "W")
+    def portal_edge(px, py):
+        # Maps are axis-aligned squares in local coords, displayed rotated 45deg as diamonds. A portal's
+        # diamond edge is the square side it sits on (its dominant coordinate):
+        #   top (y+) -> NE,  right (x+) -> SE,  bottom (y-) -> SW,  left (x-) -> NW
+        if abs(px) >= abs(py):
+            return "SE" if px > 0 else "NW"
+        return "NE" if py > 0 else "SW"
 
     zones, adj = {}, set()
     for m in re.finditer(r'<cluster ([^>]*?)>(.*?)</cluster>', world_xml, re.S):
@@ -201,7 +207,7 @@ def build_maps(world_xml):
         if "Castle" in marks:          feats.append("Castle")
         if "Castle_Outpost" in marks:  feats.append("Outpost")
         if marks & SMUGGLER_MARKERS:   feats.append("Smuggler's Den")
-        # directional neighbours (unambiguous only)  +  edges for the town BFS
+        # directional neighbours: the diamond edge the portal to that neighbour is on (+ edges for the town BFS)
         dc, tmp = Counter(), {}
         for e in exits:
             ea = attrs(e.group(1)); tid = ea.get("targetid","")
@@ -209,9 +215,13 @@ def build_maps(world_xml):
             tgt = tid.split("@")[1]; tc = clusters.get(tgt)
             if not tc: continue
             if tc["type"] in BLACK_TYPES or is_town(tc["type"]): adj.add((cid,tgt))
-            if tc["type"] in BLACK_TYPES and None not in (c["wx"],c["wy"],tc["wx"],tc["wy"]):
-                d = direction(tc["wx"]-c["wx"], tc["wy"]-c["wy"]); dc[d]+=1; tmp[d]=tgt
-        nbrs = {d:tmp[d] for d in tmp if dc[d]==1}
+            if tc["type"] in BLACK_TYPES and ea.get("targettype")=="Cluster" and ea.get("pos"):
+                try:
+                    px, py = map(float, ea["pos"].split())
+                except ValueError:
+                    continue
+                d = portal_edge(px, py); dc[d]+=1; tmp[d]=tgt
+        nbrs = {d:tmp[d] for d in tmp if dc[d]==1}   # keep only edges with a single portal (unambiguous)
         zones[cid] = {"id":cid, "name":c["name"], "biome":biome, "tier":tier,
                       "quality":int(h["type"].split("_")[-1]), "features":sorted(feats),
                       "wx":c["wx"], "wy":c["wy"], "nbrs":nbrs}
