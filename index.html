@@ -23,6 +23,7 @@
     </div>
     <div class="controls">
       <div class="streak">Streak <b id="sStreak">0</b><br>Best <b id="sBest">0</b></div>
+      <button class="newbtn" id="showAll">Show all</button>
       <button class="newbtn" id="newGame">New game</button>
     </div>
   </header>
@@ -38,6 +39,7 @@
       <div id="rows1"></div>
     </div>
     <div id="solved1"></div>
+    <div class="blockfoot"><button class="reportbtn" data-round="1">⚑ Report wrong data</button></div>
   </section>
 
   <section class="round locked" id="round2">
@@ -59,6 +61,7 @@
     </div>
     <div class="field" style="margin-top:16px"><div class="combo"><input id="g2" autocomplete="off" spellcheck="false" placeholder="Name the map you arrive at"><button class="gbtn" id="b2">Guess</button></div><div class="acx" id="ac2"></div></div>
     <div class="guesslist" id="guesses2"></div><div id="hints2"></div><div id="solved2"></div>
+    <div class="blockfoot"><button class="reportbtn" data-round="2">⚑ Report wrong data</button></div>
   </section>
 
   <section class="round locked" id="round3">
@@ -89,10 +92,30 @@
       <div id="reveal3"></div>
     </div>
     <div id="solved3"></div>
+    <div class="blockfoot"><button class="reportbtn" data-round="3">⚑ Report wrong data</button></div>
   </section>
 
   <div class="finish" id="finish"><div class="finishmsg" id="finishMsg">All three rounds cleared.</div><button class="playagain" id="playAgain">Play again</button></div>
   <p class="foot">Map &amp; ability data from Albion Online's official dumps · icons via render.albiononline.com</p>
+</div>
+<div class="modal-backdrop" id="reportModal">
+  <div class="modal">
+    <h3>Report wrong data</h3>
+    <p class="modal-sub" id="reportContext"></p>
+    <label for="rpEntity">Map / ability</label>
+    <input id="rpEntity" autocomplete="off" placeholder="name of the entry">
+    <label for="rpField">What's wrong?</label>
+    <input id="rpField" autocomplete="off" placeholder="e.g. Cast range, Biome, a gate direction…">
+    <label for="rpCorrect">What it should be</label>
+    <input id="rpCorrect" autocomplete="off" placeholder="e.g. Area">
+    <label for="rpNotes">Notes (optional)</label>
+    <textarea id="rpNotes" placeholder="anything else that helps"></textarea>
+    <div class="modal-actions">
+      <button id="rpCancel">Cancel</button>
+      <button id="rpSubmit">Submit report</button>
+    </div>
+    <div id="rpStatus"></div>
+  </div>
 </div>
 <script src="app.js"></script>
 </body>

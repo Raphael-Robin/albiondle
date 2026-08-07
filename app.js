@@ -121,7 +121,7 @@ function submit1(){
 function finishRound1(){
   r1done=true; $('g1').disabled=true; $('b1').disabled=true; ac1.close();
   $('solved1').innerHTML=`<div class="solved">${checkSvg} Found it — <b style="color:var(--brass-lite);margin-left:4px">${MAPS[secret].n}</b>. On to the gates.</div>`;
-  $('rail0').classList.add('done'); $('rail1').classList.add('active'); unlockRound2();
+  $('rail0').classList.add('done'); $('rail1').classList.add('active'); revealRound2();
   setTimeout(()=>$('round2').scrollIntoView({behavior:'smooth',block:'start'}),650);
 }
 
@@ -138,18 +138,20 @@ function genNav(start){
     if(ok&&cur!==start)return {gates,answer:cur};
   } return null;
 }
-function unlockRound2(){
+function setupRound2(){
   const nav=genNav(secret); navGates=nav.gates; navAns=nav.answer; wrong2=0;
-  $('round2').classList.remove('locked'); $('navStart').textContent=MAPS[secret].n;
+  $('navStart').textContent=MAPS[secret].n;
   const g=$('gates'); g.innerHTML='';
   navGates.forEach((d,i)=>{ if(i>0){const s=document.createElement('span');s.className='gsep';s.textContent='›';g.appendChild(s);}
     const el=document.createElement('div');el.className='gate';el.innerHTML=`<span>${d}</span>`;g.appendChild(el);});
-  const gates=[...g.querySelectorAll('.gate')];
+}
+function revealRound2(){
+  $('round2').classList.remove('locked');
+  const gates=[...$('gates').querySelectorAll('.gate')];
   if(!matchMedia('(prefers-reduced-motion:reduce)').matches){
     let i=0;(function st(){gates.forEach(x=>x.classList.remove('lit'));['NW','NE','SE','SW'].forEach(d=>$('sp-'+d).classList.remove('lit'));
       if(i<gates.length){gates[i].classList.add('lit');$('sp-'+navGates[i]).classList.add('lit');i++;setTimeout(st,560);}})();
   }
-  ac2=autocomplete($('g2'),$('ac2'),MAP_SRC,submit2);
 }
 function submit2(){
   if(r2done)return; const gi=resolve($('g2'),MAP_SRC); if(gi<0)return;
@@ -168,7 +170,7 @@ function finishRound2(){
   r2done=true; $('g2').disabled=true; $('b2').disabled=true; ac2.close();
   ['NW','NE','SE','SW'].forEach(d=>$('sp-'+d).classList.remove('lit'));
   $('solved2').innerHTML=`<div class="solved">${checkSvg} Arrived at <b style="color:var(--brass-lite);margin-left:4px">${MAPS[navAns].n}</b>.</div>`;
-  $('rail1').classList.add('done'); $('rail2').classList.add('active'); unlockRound3();
+  $('rail1').classList.add('done'); $('rail2').classList.add('active'); revealRound3();
   setTimeout(()=>$('round3').scrollIntoView({behavior:'smooth',block:'start'}),650);
 }
 
@@ -214,13 +216,12 @@ function buildR3Chips(){
     $('cdInput').disabled=on; if(on)$('cdInput').value='';
   });
 }
-function unlockRound3(){
+function setupRound3(){
   secretAb=AB_POOL[Math.floor(Math.random()*AB_POOL.length)]; r3stage='name';
-  $('round3').classList.remove('locked');
   const fr=$('abFrame'); fr.classList.remove('err');
   const img=$('abIcon'); img.onerror=()=>fr.classList.add('err'); img.src=ICON(ABILITIES[secretAb].id);
-  ac3=abilityAC($('g3'),$('ac3'),submit3name);
 }
+function revealRound3(){ $('round3').classList.remove('locked'); }
 function submit3name(){
   if(r3done||r3stage!=='name')return; const gi=resolve($('g3'),AB_SRC); if(gi<0)return;
   const win=gi===secretAb; const a=ABILITIES[gi];
@@ -317,6 +318,7 @@ function newGame(){
   $('g2').disabled=false;$('b2').disabled=false;$('g2').value='';$('guesses2').innerHTML='';$('hints2').innerHTML='';$('solved2').innerHTML='';$('round2').classList.add('locked');
   $('g3').disabled=false;$('b3').disabled=false;$('g3').value='';$('guesses3').innerHTML='';$('round3').classList.add('locked');
   $('attrstage').style.display='none'; resetChips();
+  setupRound2(); setupRound3();
   $('finish').classList.remove('show');
   ['rail0','rail1','rail2'].forEach(r=>$(r).classList.remove('done','active')); $('rail0').classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'}); $('g1').focus();
@@ -334,10 +336,54 @@ async function boot(){
     return;
   }
   $('b1').addEventListener('click',submit1); ac1=autocomplete($('g1'),$('ac1'),MAP_SRC,submit1);
-  $('b2').addEventListener('click',submit2); $('b3').addEventListener('click',submit3name);
+  $('b2').addEventListener('click',submit2); ac2=autocomplete($('g2'),$('ac2'),MAP_SRC,submit2);
+  $('b3').addEventListener('click',submit3name); ac3=abilityAC($('g3'),$('ac3'),submit3name);
   $('b3confirm').addEventListener('click',submit3confirm);
   $('newGame').addEventListener('click',newGame); $('playAgain').addEventListener('click',newGame);
+  $('showAll').addEventListener('click',()=>{
+    const on=document.body.classList.toggle('reveal-all');
+    $('showAll').classList.toggle('toggled',on); $('showAll').textContent=on?'Hide locked':'Show all';
+  });
+  document.querySelectorAll('.reportbtn').forEach(b=>b.addEventListener('click',()=>openReport(+b.dataset.round)));
+  $('rpCancel').addEventListener('click',closeReport);
+  $('rpSubmit').addEventListener('click',submitReport);
+  $('reportModal').addEventListener('click',e=>{if(e.target===$('reportModal'))closeReport();});
   buildR3Chips();
   newGame();
 }
 boot();
+
+/* ===== report wrong data ===== */
+const REPORT_ENDPOINT='';   // optional: set to a Formspree / Google Apps Script URL to collect reports
+let reportRound=1;
+function openReport(round){
+  reportRound=round;
+  let entity='',ctx='';
+  if(round===1){entity=(MAPS[secret]||{}).n||''; ctx='Round 1 — map data: biome, tier, quality, features, or nearest hub.';}
+  else if(round===2){entity=(MAPS[secret]||{}).n||''; ctx='Round 2 — a gate direction (NW/NE/SE/SW) or where a gate leads.';}
+  else{entity=(secretAb!=null?(ABILITIES[secretAb]||{}).n:'')||''; ctx='Round 3 — ability data: tags, damage type, buff/debuff, CC, cast type/range, cooldown, or immunity.';}
+  $('reportContext').textContent=ctx;
+  $('rpEntity').value=entity; $('rpField').value=''; $('rpCorrect').value=''; $('rpNotes').value='';
+  $('rpStatus').textContent='';
+  $('reportModal').classList.add('open'); $('rpField').focus();
+}
+function closeReport(){ $('reportModal').classList.remove('open'); }
+async function submitReport(){
+  const rep={ts:new Date().toISOString(), round:reportRound,
+    entity:$('rpEntity').value.trim(), issue:$('rpField').value.trim(),
+    correct:$('rpCorrect').value.trim(), notes:$('rpNotes').value.trim()};
+  if(!rep.entity || (!rep.issue && !rep.notes)){
+    $('rpStatus').style.color='#e6b6a6'; $('rpStatus').textContent='Please name the entry and what looks wrong.'; return;
+  }
+  try{const arr=JSON.parse(localStorage.getItem('albiondle_reports')||'[]'); arr.push(rep);
+    localStorage.setItem('albiondle_reports',JSON.stringify(arr));}catch(e){}
+  console.log('[Albiondle report]',rep);
+  if(REPORT_ENDPOINT){try{await fetch(REPORT_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rep)});}catch(e){}}
+  $('rpStatus').style.color='var(--portal)'; $('rpStatus').textContent='Thanks — report saved.';
+  setTimeout(closeReport,900);
+}
+/* dev helpers: albiondleReports() to view, albiondleReportsCSV() to export */
+window.albiondleReports=()=>{try{return JSON.parse(localStorage.getItem('albiondle_reports')||'[]')}catch(e){return[]}};
+window.albiondleReportsCSV=()=>{const r=window.albiondleReports();
+  const cols=['ts','round','entity','issue','correct','notes'];
+  return [cols.join(',')].concat(r.map(o=>cols.map(c=>JSON.stringify(o[c]||'')).join(','))).join('\n');};
