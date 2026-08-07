@@ -1,0 +1,396 @@
+#!/usr/bin/env python3
+"""
+Albiondle data builder
+=======================
+Reads Albion Online's official dump files and emits `data.js` (MAPS + ABILITIES).
+
+Required inputs (from https://github.com/ao-data/ao-bin-dumps):
+    cluster/world.xml   -> black-zone maps
+    items.xml           -> which spells belong to which weapon/armor
+    spells.xml          -> spell mechanics (damage school, effects, cooldown, cast)
+    localization.xml    -> ability names, descriptions, and the [dmg]/[cc]/... tags
+
+Usage:
+    python build_data.py --src ./game_data --outdir .
+    python build_data.py --download          # fetch missing dumps into ./game_data first
+
+Outputs two readable JSON files (one record per line):
+    maps.json        (276 black-zone maps)
+    abilities.json   (active weapon + armor abilities)
+
+Everything you'll want to tweak lives in the CONFIG block below.
+"""
+
+import re, json, argparse, os, sys, urllib.request
+from collections import Counter, defaultdict, deque
+
+# ============================================================================
+# CONFIG  — iterate here
+# ============================================================================
+
+RAW_BASE = "https://raw.githubusercontent.com/ao-data/ao-bin-dumps/master/"
+DUMP_FILES = {                       # local name -> path in the repo
+    "world.xml":        "cluster/world.xml",
+    "items.xml":        "items.xml",
+    "spells.xml":       "spells.xml",
+    "localization.xml": "localization.xml",
+}
+
+# --- maps ---
+BLACK_TYPES = {f"OPENPVP_BLACK_{i}" for i in range(1, 7)}   # quality band = the suffix 1..6
+BIOME = {"SW": "Swamp", "MN": "Mountain", "HL": "Highland", "FR": "Forest", "ST": "Steppe"}
+SMUGGLER_MARKERS = {"LevelMarker_Smugglers_Den", "smuggler_marketplace", "WORLDMAP_MARKER_SMUGGLERS_DEN"}
+# feature -> how it is detected (see build_maps)
+#   Static Dungeon : an exit with targettype="DungeonGroup"  (group statics only)
+#   Castle         : minimap marker  "Castle"
+#   Outpost        : minimap marker  "Castle_Outpost"
+#   Smuggler's Den : any SMUGGLER_MARKERS marker
+
+# --- weapon lines ---
+WEAPON_LINE_NAMES = {
+    "sword":"Sword","axe":"Axe","mace":"Mace","hammer":"Hammer","crossbow":"Crossbow",
+    "bow":"Bow","spear":"Spear","dagger":"Dagger","quarterstaff":"Quarterstaff","knuckles":"War Gloves",
+    "firestaff":"Fire Staff","froststaff":"Frost Staff","arcanestaff":"Arcane Staff","holystaff":"Holy Staff",
+    "naturestaff":"Nature Staff","cursestaff":"Cursed Staff",
+}
+MAGIC_LINES = {"Fire Staff","Frost Staff","Arcane Staff","Holy Staff","Cursed Staff","Nature Staff"}
+ARMOR_MAT = {"cloth":"Cloth","leather":"Leather","plate":"Plate"}
+ARMOR_PIECE = {"head":"Helmet","armor":"Armor","shoes":"Boots"}
+
+# an ability is a prototype / not-in-game if EVERY item that grants it matches this
+PROTO_ITEM = re.compile(r"PROTO|TEST|DEBUG|GAMEMASTER|_GM_|INTERNAL|PLACEHOLDER|QUESTITEM|TUTORIAL", re.I)
+
+# --- tooltip tags (from the [..] markers in localized descriptions) ---
+TAG_MARK = {"dmg":"Damage","cc":"Crowd Control","mobility":"Mobility","debuff":"Debuff","buff":"Buff","heal":"Heal"}
+TAG_ORDER = ["dmg","cc","mobility","debuff","buff","heal"]
+
+# --- crowd-control kinds (keyword in the [cc] span -> label). knockback/pull/fear -> Forced Movement ---
+CC_KEYS = [
+    ("stun","Stun"),("root","Root"),("slow","Slow"),("silence","Silence"),("interrupt","Interrupt"),
+    ("sleep","Sleep"),("asleep","Sleep"),
+    ("knockback","Forced Movement"),("knock back","Forced Movement"),("pull","Forced Movement"),
+    ("fear","Forced Movement"),("feared","Forced Movement"),("flee","Forced Movement"),
+]
+CC_FALLBACK = "Stun"   # used only if a CC-tagged ability yields no keyword
+
+# --- buff / debuff buckets (buffovertime `type` -> bucket) ---
+def bd_bucket(ty, debuff):
+    if ty in ("physicalarmor","magicresistance","bonusdefensevsmobs","bonusdefensevsplayers"): return "Resistances"
+    if "attackdamagebonus" in ty or "spelldamagebonus" in ty or ty.startswith("bonusdamagevs"):  return "Ability Damage"
+    if ty == "attackspeedbonus":     return "Attack Speed"
+    if ty == "hitpointsmaxbonus":    return "Max Health"
+    if ty == "healbonus":            return "Healing Cast"       # bonus to healing you output
+    if ty == "healmodifier":         return "Healing Received"   # modifies healing taken (anti-heal etc.)
+    if "cooldownreduction" in ty:    return "Cooldown Rate"
+    if "casttimereduction" in ty:    return "Cast Rate"
+    if ty == "movespeedbonus":       return None if debuff else "Movement Speed"  # enemy move-speed = Slow (CC)
+    return "Other"
+
+# --- cast range (union AoE rule) ---
+EFFECT_ELEMS = ("directattributechange","attributechangeovertime","root","stun","silence",
+                "knockback","forcedmovement","buffovertime","healovertime")
+TGT_HOSTILE   = {"enemy","enemies","opponent","knockeddownplayer"}
+TGT_OTHERALLY = {"friendother","friendotherplayers","ally","allies","other"}
+TGT_MULTI     = {"all","allplayers","friendall","allunmounted","allmounted","friendotherall","enemies"}
+
+# spell-reference attributes to follow when walking a spell's effect tree
+REF_ATTRS = ["spell","effect","name","endeffect","chargespell","spellchargesspell",
+             "overridespell","collisioneffect","landscapecollisioneffect"]
+
+# ============================================================================
+# helpers
+# ============================================================================
+def attrs(s):
+    return dict(re.findall(r'(\w+)="([^"]*)"', s))
+
+def load(src, name):
+    path = os.path.join(src, name)
+    if not os.path.exists(path):
+        sys.exit(f"missing input: {path}  (run with --download, or place the dump there)")
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+def download(src):
+    os.makedirs(src, exist_ok=True)
+    for name, rel in DUMP_FILES.items():
+        dst = os.path.join(src, name)
+        if os.path.exists(dst):
+            print(f"  have {name}"); continue
+        print(f"  downloading {name} ...")
+        urllib.request.urlretrieve(RAW_BASE + rel, dst)
+
+def write_pretty(path, arr):
+    """Write a JSON array with one record per line (readable + clean diffs)."""
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("[\n")
+        f.write(",\n".join("  " + json.dumps(o, ensure_ascii=False) for o in arr))
+        f.write("\n]\n")
+
+# ============================================================================
+# MAPS
+# ============================================================================
+def build_maps(world_xml):
+    clusters = {}
+    for m in re.finditer(r'<cluster ([^>]*)>', world_xml):
+        a = attrs(m.group(1)); cid, t = a.get("id"), a.get("type")
+        if not cid or not t: continue                # skip typeless stub references
+        wmp = a.get("worldmapposition","").split()
+        clusters[cid] = {"name":a.get("displayname"), "type":t, "file":a.get("file",""),
+                         "wx":float(wmp[0]) if len(wmp)==2 else None,
+                         "wy":float(wmp[1]) if len(wmp)==2 else None}
+    is_town = lambda t: ("PORTALCITY" in t or "REST" in t)
+    towns = {cid for cid,c in clusters.items() if is_town(c["type"])}
+
+    def direction(dx,dy): return ("N" if dy>0 else "S")+("E" if dx>0 else "W")
+
+    zones, adj = {}, set()
+    for m in re.finditer(r'<cluster ([^>]*?)>(.*?)</cluster>', world_xml, re.S):
+        h = attrs(m.group(1))
+        if h.get("type") not in BLACK_TYPES: continue
+        cid = h["id"]; c = clusters[cid]; body = m.group(2); f = h["file"]
+        biome = BIOME.get((re.search(r'_([A-Z]{2})_AUTO_', f) or [None,None])[1]) if re.search(r'_([A-Z]{2})_AUTO_', f) else None
+        tier  = (re.search(r'_(T\d)_', f) or [None,None])[1]
+        marks = set(re.findall(r'<marker type="([^"]+)"', body))
+        exits = list(re.finditer(r'<exit ([^>]*?)/>', body))
+        feats = []
+        if any('targettype="DungeonGroup"' in e.group(0) for e in exits): feats.append("Static Dungeon")
+        if "Castle" in marks:          feats.append("Castle")
+        if "Castle_Outpost" in marks:  feats.append("Outpost")
+        if marks & SMUGGLER_MARKERS:   feats.append("Smuggler's Den")
+        # directional neighbours (unambiguous only)  +  edges for the town BFS
+        dc, tmp = Counter(), {}
+        for e in exits:
+            ea = attrs(e.group(1)); tid = ea.get("targetid","")
+            if "@" not in tid: continue
+            tgt = tid.split("@")[1]; tc = clusters.get(tgt)
+            if not tc: continue
+            if tc["type"] in BLACK_TYPES or is_town(tc["type"]): adj.add((cid,tgt))
+            if tc["type"] in BLACK_TYPES and None not in (c["wx"],c["wy"],tc["wx"],tc["wy"]):
+                d = direction(tc["wx"]-c["wx"], tc["wy"]-c["wy"]); dc[d]+=1; tmp[d]=tgt
+        nbrs = {d:tmp[d] for d in tmp if dc[d]==1}
+        zones[cid] = {"id":cid, "name":c["name"], "biome":biome, "tier":tier,
+                      "quality":int(h["type"].split("_")[-1]), "features":sorted(feats),
+                      "wx":c["wx"], "wy":c["wy"], "nbrs":nbrs}
+
+    # nearest town by gate-path (BFS over black<->black and black<->town edges)
+    G = defaultdict(set)
+    for a,b in adj: G[a].add(b); G[b].add(a)
+    def nearest(start):
+        dist={}; seen={start}; q=deque([(start,0)])
+        while q:
+            n,d=q.popleft()
+            for nb in G[n]:
+                if nb in seen: continue
+                seen.add(nb)
+                if nb in towns: dist[nb]=d+1
+                q.append((nb,d+1))
+        if not dist: return None
+        md=min(dist.values()); cand=[t for t,dd in dist.items() if dd==md]
+        sx,sy=clusters[start]["wx"],clusters[start]["wy"]
+        cand.sort(key=lambda t:((clusters[t]["wx"]-sx)**2+(clusters[t]["wy"]-sy)**2, clusters[t]["name"]))
+        return clusters[cand[0]]["name"]
+    for cid,z in zones.items(): z["town"]=nearest(cid)
+
+    ordered = sorted(zones.values(), key=lambda z:z["name"])
+    idx = {z["id"]:i for i,z in enumerate(ordered)}
+    out=[]
+    for z in ordered:
+        d = {dr:idx[t] for dr,t in z["nbrs"].items() if t in idx}
+        out.append({"n":z["name"], "q":z["quality"], "t":int(z["tier"][1:]),
+                    "b":z["biome"], "f":z["features"], "c":z["town"], "d":d})
+    return out
+
+# ============================================================================
+# ABILITIES
+# ============================================================================
+def parse_spells(spells_xml):
+    S = {}
+    for m in re.finditer(r'<activespell ([^>]*?)(?:/>|>(.*?)</activespell>)', spells_xml, re.S):
+        h = attrs(m.group(1))
+        if h.get("uniquename"): S[h["uniquename"]] = (h, m.group(2) or "")
+    return S
+
+def subtree(uid, S):
+    """Return every (head_attrs, body) in the spell's effect tree, following spell refs."""
+    seen=set(); pairs=[]
+    def go(u):
+        if u in seen or u not in S: return
+        seen.add(u); h,b = S[u]; pairs.append((h,b))
+        for a in REF_ATTRS:
+            for r in re.findall(a+r'="([^"]+)"', b):
+                if r in S: go(r)
+    go(uid)
+    return pairs
+
+def build_localization(loc_xml, spell_ids, desctag):
+    want_name = {"@SPELLS_"+s for s in spell_ids}
+    want_desc = set(desctag.values()) | {"@SPELLS_"+s+"_DESC" for s in spell_ids}
+    names, descs = {}, {}
+    for tu in re.finditer(r'<tu tuid="(@SPELLS_[A-Z0-9_]+)">(.*?)</tu>', loc_xml, re.S):
+        tuid = tu.group(1)
+        if tuid not in want_name and tuid not in want_desc: continue
+        en = re.search(r'xml:lang="EN-US">\s*<seg>(.*?)</seg>', tu.group(2), re.S)
+        if not en: continue
+        (descs if tuid.endswith("_DESC") else names)[tuid] = en.group(1)
+    return names, descs
+
+def clean_desc(txt):
+    if not txt: return ""
+    t = re.sub(r'\[/?[a-z]+\]', '', txt)          # strip [dmg] [/dmg] ...
+    t = re.sub(r'\$\$[^$]*\$', 'X', t)            # $$VAR$  -> X
+    t = re.sub(r'\$[^$]*\$', 'X', t)              # $var$   -> X
+    t = re.sub(r'\{\d+\}', 'X', t)                # {2}     -> X
+    return re.sub(r'\s+', ' ', t).strip()
+
+def target_class(t):
+    t = (t or "").lower()
+    if any(k in t for k in ("enemy","enemies","opponent")): return "enemy"
+    if any(k in t for k in ("self","caster","ally","allies","group","friend")): return "self"
+    return "?"
+
+def build_abilities(items_xml, spells_xml, loc_xml):
+    # ---- which spells come from which items (for line/slot/piece + prototype filter) ----
+    weapon, armor, sources = {}, defaultdict(lambda:{"pieces":set(),"mats":set()}), defaultdict(list)
+    for wm in re.finditer(r'<weapon ([^>]*?)>(.*?)</weapon>', items_xml, re.S):
+        h = attrs(wm.group(1)); u = h.get("uniquename","")
+        if h.get("shopcategory")!="weapons" or not re.match(r"^T\d_", u): continue
+        line = h.get("shopsubcategory1")
+        if line not in WEAPON_LINE_NAMES: continue
+        for cs in re.finditer(r'<craftspell ([^>]*?)/>', wm.group(2)):
+            a = attrs(cs.group(1)); sp = a.get("uniquename","")
+            if not a.get("slots") or sp.startswith("PASSIVE"): continue
+            weapon.setdefault(sp, {"line":WEAPON_LINE_NAMES[line]}); sources[sp].append(u)
+    for em in re.finditer(r'<equipmentitem ([^>]*?)>(.*?)</equipmentitem>', items_xml, re.S):
+        h = attrs(em.group(1)); u = h.get("uniquename",""); slot = h.get("slottype")
+        if slot not in ARMOR_PIECE or not re.match(r"^T\d_", u): continue
+        mat = next((ARMOR_MAT[m] for m in ARMOR_MAT if (h.get("shopsubcategory1","") or "").startswith(m)), None)
+        if not mat: continue
+        for sp in re.findall(r'<craftspell uniquename="([^"]+)"', em.group(2)):
+            if sp.startswith("PASSIVE"): continue
+            armor[sp]["pieces"].add(ARMOR_PIECE[slot]); armor[sp]["mats"].add(mat); sources[sp].append(u)
+
+    all_ids = set(weapon) | set(armor)
+    # keep only abilities with at least one real (non-prototype) source item
+    kept = {sp for sp in all_ids if any(not PROTO_ITEM.search(u) for u in sources[sp])}
+
+    # ---- spell table + localization ----
+    S = parse_spells(spells_xml)
+    desctag = {sp: S[sp][0].get("descriptionlocatag","") for sp in kept if sp in S}
+    names, descs = build_localization(loc_xml, kept, desctag)
+    def raw_desc(sp):
+        return descs.get(desctag.get(sp) or ("@SPELLS_"+sp+"_DESC")) or descs.get("@SPELLS_"+sp+"_DESC")
+
+    abilities = []
+    for sp in kept:
+        name = names.get("@SPELLS_"+sp)
+        if not name: continue                      # no display name -> skip
+        is_weapon = sp in weapon
+        pairs = subtree(sp, S)
+        blob = "".join(b for _,b in pairs)
+        head = S.get(sp, ({},""))[0]
+        rd = raw_desc(sp) or ""
+
+        # tags (from [..] markers)
+        found = {t for t in re.findall(r'\[([a-z]+)\]', rd) if t in TAG_MARK}
+        tags = [TAG_MARK[t] for t in TAG_ORDER if t in found]
+
+        # damage school
+        school=set()
+        for h,b in pairs:
+            for dm in re.finditer(r'<(?:directattributechange|attributechangeovertime)([^>]*)/?>', b):
+                at = attrs(dm.group(1))
+                if at.get("attribute","").lower() in ("health","hitpoints"):
+                    ch = at.get("change") or at.get("changepersecond") or at.get("value") or ""
+                    if ch.startswith("-") and at.get("effecttype"):
+                        school.add("Magical" if at["effecttype"]=="magic" else "Physical")
+        if "Damage" in tags and not school:
+            school = {"Magical"} if (is_weapon and weapon[sp]["line"] in MAGIC_LINES) else {"Physical"}
+
+        # buff / debuff kinds (direction-aware)
+        bf,db=set(),set()
+        for m in re.finditer(r'<buffovertime([^>]*)/?>', blob):
+            at=attrs(m.group(1)); ty=at.get("type")
+            if not ty: continue
+            tgt=target_class(at.get("target")); neg=(at.get("value","") or at.get("valuepersecond","")).startswith("-")
+            if tgt=="self" and not neg:
+                b=bd_bucket(ty,False);  bf.add(b) if b else None
+            elif tgt=="enemy":
+                b=bd_bucket(ty,True);   db.add(b) if b else None
+        for m in re.finditer(r'<attributechangeovertime([^>]*)/?>', blob):
+            at=attrs(m.group(1))
+            if at.get("attribute","").lower() in ("health","hitpoints"):
+                (db.add("DoT") if (at.get("changepersecond") or at.get("change") or "").startswith("-") else bf.add("HoT"))
+        if "<invincibility" in blob: bf.add("Invulnerability")
+        if re.search(r'<cceffectimmunity[^>]*type="forcedmovement"', blob): bf.add("Immunity to Forced Movement")
+        if "damageshield" in blob.lower(): bf.add("Shield")
+        if "Buff" in tags and not bf: bf.add("Other")
+        if "Debuff" in tags and not db: db.add("Other")
+        if "Buff" not in tags: bf=set()
+        if "Debuff" not in tags: db=set()
+
+        # crowd-control kinds (from localized [cc] spans)
+        cc=set()
+        if "Crowd Control" in tags:
+            spans = re.findall(r'\[cc\](.*?)\[/cc\]', rd, re.S|re.I)
+            text = (" ".join(spans) if spans else rd).lower()
+            for key,lab in CC_KEYS:
+                if key in text: cc.add(lab)
+            if not cc: cc.add(CC_FALLBACK)
+
+        # cooldown + IP scaling
+        rc = head.get("recastdelay")
+        cd = float(rc) if rc not in (None,"") else 0.0
+        ip = bool(head.get("itempowerrecastdelaymodifier"))
+
+        # cast type
+        main_body = S.get(sp,({},""))[1]
+        ct = "Channeled" if "<channelingspell" in main_body else ("Cast time" if float(head.get("castingtime","0") or 0)>0 else "Instant")
+
+        # cast range (union AoE rule)
+        tgts=set()
+        for el in EFFECT_ELEMS:
+            for m in re.finditer(r'<'+el+r'\b([^>]*)', blob):
+                t=attrs(m.group(1)).get("target")
+                if t: tgts.add(t)
+        affects_other = bool(tgts & (TGT_HOSTILE|TGT_OTHERALLY|TGT_MULTI))
+        aoe = bool(re.search(r'effectarearadius="[1-9]', blob) or re.search(r'<spelleffectarea\b', blob) or (tgts & TGT_MULTI))
+        cr = "Self" if not affects_other else ("Area" if aoe else "Single-target")
+
+        entry = {"id":sp, "n":name, "t":"w" if is_weapon else "a", "tags":tags,
+                 "dmg":sorted(school), "bf":sorted(bf), "db":sorted(db), "cc":sorted(cc),
+                 "cd":cd, "ip":ip, "ct":ct, "cr":cr, "desc":clean_desc(rd)}
+        if is_weapon: entry["l"] = weapon[sp]["line"]
+        abilities.append(entry)
+
+    abilities.sort(key=lambda a:a["n"])
+    return abilities
+
+# ============================================================================
+# main
+# ============================================================================
+def main():
+    ap = argparse.ArgumentParser(description="Build Albiondle data from Albion dumps.")
+    ap.add_argument("--src", default="game_data", help="folder with world.xml/items.xml/spells.xml/localization.xml")
+    ap.add_argument("--outdir", default=".", help="folder to write maps.json and abilities.json into")
+    ap.add_argument("--download", action="store_true", help="fetch missing dumps into --src first")
+    args = ap.parse_args()
+
+    if args.download: download(args.src)
+
+    print("building maps ...")
+    maps = build_maps(load(args.src, "world.xml"))
+    print(f"  {len(maps)} black-zone maps")
+    print("building abilities ...")
+    abilities = build_abilities(load(args.src,"items.xml"), load(args.src,"spells.xml"), load(args.src,"localization.xml"))
+    print(f"  {len(abilities)} abilities ({sum(a['t']=='w' for a in abilities)} weapon, {sum(a['t']=='a' for a in abilities)} armor)")
+
+    os.makedirs(args.outdir, exist_ok=True)
+    mp = os.path.join(args.outdir, "maps.json")
+    ap_ = os.path.join(args.outdir, "abilities.json")
+    write_pretty(mp, maps)
+    write_pretty(ap_, abilities)
+    print(f"wrote {mp}  ({os.path.getsize(mp):,} bytes)")
+    print(f"wrote {ap_}  ({os.path.getsize(ap_):,} bytes)")
+
+if __name__ == "__main__":
+    main()

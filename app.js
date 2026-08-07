@@ -5,12 +5,16 @@ const $=id=>document.getElementById(id);
 const setEq=(a,b)=>{const A=new Set(a),B=new Set(b);return A.size===B.size&&[...A].every(x=>B.has(x));};
 const checkSvg='<svg width="18" height="18" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" fill="none" stroke="var(--portal)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-const MAP_SRC=MAPS.map((m,i)=>({i,n:m.n,low:m.n.toLowerCase(),tag:`T${m.t}·Q${m.q}·${m.b}`}));
-const AB_SRC=ABILITIES.map((a,i)=>({i,n:a.n,low:a.n.toLowerCase(),line:a.t==='w'?a.l:null,tag:a.t==='w'?a.l:'Armor'}));
-const LINES=[...new Set(ABILITIES.filter(a=>a.t==='w').map(a=>a.l))].sort();
-const LINE_LOW=LINES.map(l=>l.toLowerCase());
-const AB_POOL=ABILITIES.map((a,i)=>i).filter(i=>ABILITIES[i].tags&&ABILITIES[i].tags.length>0);
+let MAPS=[], ABILITIES=[], MAP_SRC=[], AB_SRC=[], LINES=[], LINE_LOW=[], AB_POOL=[];
 const ICON=id=>`https://render.albiononline.com/v1/spell/${id}.png?size=217`;
+function initData(maps,abilities){
+  MAPS=maps; ABILITIES=abilities;
+  MAP_SRC=MAPS.map((m,i)=>({i,n:m.n,low:m.n.toLowerCase(),tag:`T${m.t}·Q${m.q}·${m.b}`}));
+  AB_SRC=ABILITIES.map((a,i)=>({i,n:a.n,low:a.n.toLowerCase(),line:a.t==='w'?a.l:null,tag:a.t==='w'?a.l:'Armor'}));
+  LINES=[...new Set(ABILITIES.filter(a=>a.t==='w').map(a=>a.l))].sort();
+  LINE_LOW=LINES.map(l=>l.toLowerCase());
+  AB_POOL=ABILITIES.map((a,i)=>i).filter(i=>ABILITIES[i].tags&&ABILITIES[i].tags.length>0);
+}
 
 const TAGS=['Damage','Crowd Control','Mobility','Debuff','Buff','Heal'];
 const DMG=['Physical','Magical'];
@@ -299,12 +303,24 @@ function newGame(){
   $('finish').classList.remove('show');
   ['rail0','rail1','rail2'].forEach(r=>$(r).classList.remove('done','active')); $('rail0').classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'}); $('g1').focus();
-  unlockRound3();
 }
 
-$('b1').addEventListener('click',submit1); ac1=autocomplete($('g1'),$('ac1'),MAP_SRC,submit1);
-$('b2').addEventListener('click',submit2); $('b3').addEventListener('click',submit3name);
-$('b3confirm').addEventListener('click',submit3confirm);
-$('newGame').addEventListener('click',newGame); $('playAgain').addEventListener('click',newGame);
-buildR3Chips();
-newGame();
+async function boot(){
+  try{
+    const [maps,abilities]=await Promise.all([
+      fetch('maps.json').then(r=>{if(!r.ok)throw 0;return r.json();}),
+      fetch('abilities.json').then(r=>{if(!r.ok)throw 0;return r.json();})
+    ]);
+    initData(maps,abilities);
+  }catch(e){
+    document.querySelector('.lede').innerHTML='Could not load game data. If you opened this file directly from disk, serve it with a local web server (e.g. <code>python -m http.server</code>) and reload — browsers block reading JSON over file://.';
+    return;
+  }
+  $('b1').addEventListener('click',submit1); ac1=autocomplete($('g1'),$('ac1'),MAP_SRC,submit1);
+  $('b2').addEventListener('click',submit2); $('b3').addEventListener('click',submit3name);
+  $('b3confirm').addEventListener('click',submit3confirm);
+  $('newGame').addEventListener('click',newGame); $('playAgain').addEventListener('click',newGame);
+  buildR3Chips();
+  newGame();
+}
+boot();
