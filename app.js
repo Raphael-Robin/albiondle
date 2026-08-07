@@ -354,7 +354,7 @@ async function boot(){
 boot();
 
 /* ===== report wrong data ===== */
-const REPORT_ENDPOINT='';   // optional: set to a Formspree / Google Apps Script URL to collect reports
+const REPORT_ENDPOINT='https://script.google.com/macros/s/AKfycbx749JDWduQ4zcdzXHub81Nb6V48SmSxc81ipsm8FeLLHXOi3PNOv3yHXc9guosquW7Nw/exec';   // optional: set to a Formspree / Google Apps Script URL to collect reports
 let reportRound=1;
 function openReport(round){
   reportRound=round;
