@@ -9,7 +9,7 @@ const ICON=id=>`https://render.albiononline.com/v1/spell/${id}.png?size=217`;
 function initData(maps,abilities){
   MAPS=maps; ABILITIES=abilities;
   MAP_SRC=MAPS.map((m,i)=>({i,n:m.n,low:m.n.toLowerCase(),tag:`T${m.t}·Q${m.q}·${m.b}`}));
-  AB_SRC=ABILITIES.map((a,i)=>({i,n:a.n,low:a.n.toLowerCase(),line:a.t==='w'?a.l:null,tag:a.t==='w'?a.l:'Armor'}));
+  AB_SRC=ABILITIES.map((a,i)=>({i,n:a.n,low:a.n.toLowerCase(),line:a.t==='w'?a.l:null,piece:a.t==='a'?a.p:null,tag:a.t==='w'?a.l:a.p}));
   LINES=[...new Set(ABILITIES.filter(a=>a.t==='w').map(a=>a.l))].sort();
   LINE_LOW=LINES.map(l=>l.toLowerCase());
   AB_POOL=ABILITIES.map((a,i)=>i).filter(i=>ABILITIES[i].tags&&ABILITIES[i].tags.length>0);
@@ -65,12 +65,13 @@ function abilityAC(input, box, onEnter){
   function open(){
     const q=norm(input.value); if(!q){close();return;}
     const linesMatch=LINES.filter((l,k)=>LINE_LOW[k].includes(q));
-    const armorMatch = q.length>=3 && 'armor'.startsWith(q);   // typing "armor" lists all armor spells
+    let pieceMatch=null;   // typing helmet / armor / boots lists that armor slot's spells
+    for(const [kw,lab] of [['helmet','Helmet'],['armor','Armor'],['boots','Boots']]){if(q.length>=3&&kw.startsWith(q)){pieceMatch=lab;break;}}
     const starts=[],contains=[],lineSpells=[],seen=new Set();
     for(const it of AB_SRC){const p=it.low.indexOf(q); if(p===0){starts.push(it);seen.add(it.i);} else if(p>0){contains.push(it);seen.add(it.i);}}
-    if(linesMatch.length||armorMatch){for(const it of AB_SRC){if(seen.has(it.i))continue;
-      if((it.line&&linesMatch.includes(it.line))||(armorMatch&&!it.line)){lineSpells.push(it);seen.add(it.i);}}}
-    items=[...starts,...contains,...lineSpells].slice(0,30); sel=-1;
+    if(linesMatch.length||pieceMatch){for(const it of AB_SRC){if(seen.has(it.i))continue;
+      if((it.line&&linesMatch.includes(it.line))||(pieceMatch&&it.piece===pieceMatch)){lineSpells.push(it);seen.add(it.i);}}}
+    items=[...starts,...contains,...lineSpells].sort((x,y)=>x.n.localeCompare(y.n)).slice(0,100); sel=-1;
     if(!items.length){close();return;}
     box.innerHTML=items.map(it=>`<div>${it.n}<span class="tag">${it.tag}</span></div>`).join('');
     box.classList.add('open');

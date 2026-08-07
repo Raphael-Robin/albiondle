@@ -436,6 +436,7 @@ def build_abilities(items_xml, spells_xml, loc_xml):
                  "dmg":sorted(school), "bf":sorted(bf), "db":sorted(db), "imm":sorted(imm), "cc":sorted(cc),
                  "cd":cd, "ip":ip, "ct":ct, "cr":cr, "desc":clean_desc(rd)}
         if is_weapon: entry["l"] = weapon[sp]["line"]
+        else: entry["p"] = (sorted(armor[sp]["pieces"]) or ["Armor"])[0]   # Helmet / Armor / Boots
         abilities.append(entry)
 
     abilities.sort(key=lambda a:a["n"])
