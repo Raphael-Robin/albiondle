@@ -19,7 +19,7 @@ function initData(maps,abilities){
 const TAGS=['Damage','Crowd Control','Mobility','Debuff','Buff','Heal'];
 const DMG=['Physical','Magical'];
 const BUFF=['Resistances','Movement Speed','Ability Damage','Attack Speed','Cast Rate','Cooldown Rate','Shield','HoT','Healing Cast','Healing Received','Max Health','CC Duration','Energy','CC Resistance','Attack Range','Resilience Penetration','Threat','Immunity'];
-const DEBUFF=['Resistances','Ability Damage','Attack Speed','DoT','Healing Cast','Healing Received','Max Health','CC Resistance'];
+const DEBUFF=['Resistances','Ability Damage','Attack Speed','Cast Rate','Cooldown Rate','DoT','Healing Cast','Healing Received','Max Health','CC Duration','Energy','CC Resistance','Attack Range','Resilience Penetration','Threat'];
 const IMM=['Immune to Damage','Immune to Stun','Immune to Root','Immune to Slow','Immune to Silence','Immune to Forced Movement','Immune to Purge','Immune to Debuffs'];
 const CC=['Stun','Root','Slow','Silence','Interrupt','Sleep','Forced Movement'];
 const CT=['Instant','Cast time','Channeled','Toggle'];

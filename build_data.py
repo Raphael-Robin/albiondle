@@ -112,14 +112,18 @@ DEBUFF_IMMUNITY_IDS = {
 PURGE_IMMUNITY_IDS = {
     "DEFENSERUN",     # Iron Will
 }
+# Cast-range overrides for the rare ability the auto-rule still gets wrong. Add "SPELL_ID": "Area"
+# (or "Single-target"/"Self") as you find them in playtesting.
+CAST_RANGE_OVERRIDES = {
+}
 # ------------------------------------------------------------------------------------------------
 
-# --- cast range (union AoE rule) ---
+# --- cast range: Self (affects only caster) / Single-target (one other) / Area (can hit multiple) ---
+# Effect-element targets that count as "affects someone other than the caster".
 EFFECT_ELEMS = ("directattributechange","attributechangeovertime","root","stun","silence",
-                "knockback","forcedmovement","buffovertime","healovertime")
-TGT_HOSTILE   = {"enemy","enemies","opponent","knockeddownplayer"}
-TGT_OTHERALLY = {"friendother","friendotherplayers","ally","allies","other"}
-TGT_MULTI     = {"all","allplayers","friendall","allunmounted","allmounted","friendotherall","enemies"}
+                "knockback","forcedmovement","buffovertime","healovertime","projectile")
+TGT_OTHER = {"enemy","enemies","opponent","knockeddownplayer","friendother","friendotherplayers",
+             "ally","allies","other","friendall"}   # friendall = "any one ally" (a single-target pick)
 
 # spell-reference attributes to follow when walking a spell's effect tree
 REF_ATTRS = ["spell","effect","name","endeffect","chargespell","spellchargesspell",
@@ -130,6 +134,18 @@ REF_ATTRS = ["spell","effect","name","endeffect","chargespell","spellchargesspel
 # ============================================================================
 def attrs(s):
     return dict(re.findall(r'(\w+)="([^"]*)"', s))
+
+def hostile_area(blob):
+    """True if an area radius (>=2) sits on a hostile (enemy) effect -> a real multi-enemy AoE.
+    An ally-only radius (e.g. Shield Charge's ally shield) does NOT count as multi-target."""
+    for m in re.finditer(r'<\w+\b([^>]*)', blob):
+        at = attrs(m.group(1)); r = at.get("effectarearadius")
+        if r and at.get("target") in ("enemy","enemies","opponent"):
+            try:
+                if float(r) >= 2: return True
+            except ValueError:
+                pass
+    return False
 
 def load(src, name):
     path = os.path.join(src, name)
@@ -387,15 +403,24 @@ def build_abilities(items_xml, spells_xml, loc_xml):
         else:
             ct = "Instant"
 
-        # cast range (union AoE rule)
+        # cast range. "Affects someone else" comes from offensive tags + effect targets; "can hit
+        # multiple" is read from per-target scaling / area (semantically reliable). Main-spell target
+        # keywords are deliberately NOT used — target="all" is overloaded (self-stacks, "all debuffs").
         tgts=set()
         for el in EFFECT_ELEMS:
             for m in re.finditer(r'<'+el+r'\b([^>]*)', blob):
                 t=attrs(m.group(1)).get("target")
                 if t: tgts.add(t)
-        affects_other = bool(tgts & (TGT_HOSTILE|TGT_OTHERALLY|TGT_MULTI))
-        aoe = bool(re.search(r'effectarearadius="[1-9]', blob) or re.search(r'<spelleffectarea\b', blob) or (tgts & TGT_MULTI))
-        cr = "Self" if not affects_other else ("Area" if aoe else "Single-target")
+        affects_other = (any(x in tags for x in ("Damage","Crowd Control","Debuff"))
+                         or bool(tgts & TGT_OTHER)
+                         or head.get("target") in TGT_OTHER)   # ability cast directly on an ally/enemy (e.g. Shield Charge)
+        multi = bool(re.search(r'targetcount(?:value|duration)bonusfactor="[0-9.]*[1-9]', blob)
+                     or re.search(r'<spelleffectarea\b', blob)
+                     or re.search(r'maxtargets="(?:[2-9]|\d\d)"', blob)
+                     or re.search(r'deletewhenmaxtargetshit="(?:[2-9]|\d\d)"', blob)
+                     or hostile_area(blob))
+        cr = "Self" if not affects_other else ("Area" if multi else "Single-target")
+        if sp in CAST_RANGE_OVERRIDES: cr = CAST_RANGE_OVERRIDES[sp]
 
         entry = {"id":sp, "n":name, "t":"w" if is_weapon else "a", "tags":tags,
                  "dmg":sorted(school), "bf":sorted(bf), "db":sorted(db), "imm":sorted(imm), "cc":sorted(cc),
