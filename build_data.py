@@ -73,22 +73,24 @@ CC_KEYS = [
 ]
 CC_FALLBACK = "Stun"   # used only if a CC-tagged ability yields no keyword
 
-# --- buff / debuff buckets (buffovertime `type` -> bucket).  Unmapped types are dropped (no "Other"). ---
+# --- buff / debuff buckets (buffovertime `type` -> set of buckets).  Unmapped types are dropped. ---
 def bd_bucket(ty, debuff):
-    if ty in ("physicalarmor","magicresistance","bonusdefensevsmobs","bonusdefensevsplayers"): return "Resistances"
-    if "attackdamagebonus" in ty or "spelldamagebonus" in ty or ty.startswith("bonusdamagevs"):  return "Ability Damage"
-    if ty == "attackspeedbonus":       return "Attack Speed"
-    if ty == "hitpointsmaxbonus":      return "Max Health"
-    if ty == "healbonus":              return "Healing Cast"       # bonus to healing you output
-    if ty == "healmodifier":           return "Healing Received"   # modifies healing taken (anti-heal etc.)
-    if "cooldownreduction" in ty:      return "Cooldown Rate"
-    if "casttimereduction" in ty:      return "Cast Rate"
-    if ty == "movespeedbonus":         return None if debuff else "Movement Speed"  # enemy move-speed = Slow (CC)
-    if ty.startswith("bonusccduration"): return "CC Duration"
-    if ty == "energycostreduction":    return "Energy"
-    if ty == "crowdcontrolresistance": return "CC Resistance"
-    if ty == "attackrangebonus":       return "Attack Range"
-    if ty == "focusfireprotectionpenetration": return "Resilience Penetration"
+    if ty in ("physicalarmor","magicresistance","bonusdefensevsmobs","bonusdefensevsplayers"): return {"Resistances"}
+    if "attackdamagebonus" in ty:      return {"Autoattack Damage"}      # "attack" = auto-attack
+    if "spelldamagebonus" in ty:       return {"Ability Damage"}         # "spell" = ability
+    if ty.startswith("bonusdamagevs"): return {"Damage vs Players/All"}  # flat "damage vs target-type" bonus
+    if ty == "attackspeedbonus":       return {"Attack Speed"}
+    if ty == "hitpointsmaxbonus":      return {"Max Health"}
+    if ty == "healbonus":              return {"Healing Cast"}       # bonus to healing you output
+    if ty == "healmodifier":           return {"Healing Received"}   # modifies healing taken (anti-heal etc.)
+    if "cooldownreduction" in ty:      return {"Cooldown Rate"}
+    if "casttimereduction" in ty:      return {"Cast Rate"}
+    if ty == "movespeedbonus":         return None if debuff else {"Movement Speed"}  # enemy move-speed = Slow (CC)
+    if ty.startswith("bonusccduration"): return {"CC Duration"}
+    if ty == "energycostreduction":    return {"Energy"}
+    if ty == "crowdcontrolresistance": return {"CC Resistance"}
+    if ty == "attackrangebonus":       return {"Attack Range"}
+    if ty == "focusfireprotectionpenetration": return {"Resilience Penetration"}
     return None                        # threatbonus, energyregenerationbonus & everything else -> ignored
 
 # --- immunity sub-types (from cceffectimmunity `type=`) ---
@@ -385,9 +387,11 @@ def build_abilities(items_xml, spells_xml, loc_xml):
             if not ty: continue
             tgt=target_class(at.get("target")); neg=(at.get("value","") or at.get("valuepersecond","")).startswith("-")
             if tgt=="self" and not neg:
-                b=bd_bucket(ty,False);  bf.add(b) if b else None
+                b=bd_bucket(ty,False)
+                if b: bf |= b
             elif tgt=="enemy":
-                b=bd_bucket(ty,True);   db.add(b) if b else None
+                b=bd_bucket(ty,True)
+                if b: db |= b
         for m in re.finditer(r'<attributechangeovertime([^>]*)/?>', blob):
             at=attrs(m.group(1))
             if at.get("attribute","").lower() in ("health","hitpoints"):

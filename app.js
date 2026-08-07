@@ -17,8 +17,8 @@ function initData(maps,abilities){
 
 const TAGS=['Damage','Crowd Control','Mobility','Debuff','Buff','Heal'];
 const DMG=['Physical','Magical'];
-const BUFF=['Resistances','Movement Speed','Ability Damage','Attack Speed','Cast Rate','Cooldown Rate','Shield','HoT','Healing Cast','Healing Received','Max Health','CC Duration','Energy','CC Resistance','Attack Range','Resilience Penetration','Threat','Immunity'];
-const DEBUFF=['Resistances','Ability Damage','Attack Speed','Cast Rate','Cooldown Rate','DoT','Healing Cast','Healing Received','Max Health','CC Duration','Energy','CC Resistance','Attack Range','Resilience Penetration','Threat'];
+const BUFF=['Resistances','Movement Speed','Ability Damage','Autoattack Damage','Damage vs Players/All','Attack Speed','Cast Rate','Cooldown Rate','Shield','HoT','Healing Cast','Healing Received','Max Health','CC Duration','Energy','CC Resistance','Attack Range','Resilience Penetration','Immunity'];
+const DEBUFF=['Resistances','Ability Damage','Autoattack Damage','Damage vs Players/All','Attack Speed','Cast Rate','Cooldown Rate','DoT','Healing Cast','Healing Received','Max Health','CC Duration','Energy','CC Resistance','Attack Range','Resilience Penetration'];
 const IMM=['Immune to Damage','Immune to Stun','Immune to Root','Immune to Slow','Immune to Silence','Immune to Forced Movement','Immune to Purge','Immune to Debuffs'];
 const CC=['Stun','Root','Slow','Silence','Interrupt','Sleep','Forced Movement'];
 const CT=['Instant','Cast time','Channeled','Toggle'];
@@ -354,7 +354,7 @@ async function boot(){
 boot();
 
 /* ===== report wrong data ===== */
-const REPORT_ENDPOINT='https://script.google.com/macros/s/AKfycbx749JDWduQ4zcdzXHub81Nb6V48SmSxc81ipsm8FeLLHXOi3PNOv3yHXc9guosquW7Nw/exec';   // optional: set to a Formspree / Google Apps Script URL to collect reports
+const REPORT_ENDPOINT='';   // optional: set to a Formspree / Google Apps Script URL to collect reports
 let reportRound=1;
 function openReport(round){
   reportRound=round;
@@ -378,7 +378,7 @@ async function submitReport(){
   try{const arr=JSON.parse(localStorage.getItem('albiondle_reports')||'[]'); arr.push(rep);
     localStorage.setItem('albiondle_reports',JSON.stringify(arr));}catch(e){}
   console.log('[Albiondle report]',rep);
-  if(REPORT_ENDPOINT){try{await fetch(REPORT_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rep)});}catch(e){}}
+  if(REPORT_ENDPOINT){try{await fetch(REPORT_ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(rep)});}catch(e){}}
   $('rpStatus').style.color='var(--portal)'; $('rpStatus').textContent='Thanks — report saved.';
   setTimeout(closeReport,900);
 }
