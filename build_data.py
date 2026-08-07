@@ -73,18 +73,46 @@ CC_KEYS = [
 ]
 CC_FALLBACK = "Stun"   # used only if a CC-tagged ability yields no keyword
 
-# --- buff / debuff buckets (buffovertime `type` -> bucket) ---
+# --- buff / debuff buckets (buffovertime `type` -> bucket).  Unmapped types are dropped (no "Other"). ---
 def bd_bucket(ty, debuff):
     if ty in ("physicalarmor","magicresistance","bonusdefensevsmobs","bonusdefensevsplayers"): return "Resistances"
     if "attackdamagebonus" in ty or "spelldamagebonus" in ty or ty.startswith("bonusdamagevs"):  return "Ability Damage"
-    if ty == "attackspeedbonus":     return "Attack Speed"
-    if ty == "hitpointsmaxbonus":    return "Max Health"
-    if ty == "healbonus":            return "Healing Cast"       # bonus to healing you output
-    if ty == "healmodifier":         return "Healing Received"   # modifies healing taken (anti-heal etc.)
-    if "cooldownreduction" in ty:    return "Cooldown Rate"
-    if "casttimereduction" in ty:    return "Cast Rate"
-    if ty == "movespeedbonus":       return None if debuff else "Movement Speed"  # enemy move-speed = Slow (CC)
-    return "Other"
+    if ty == "attackspeedbonus":       return "Attack Speed"
+    if ty == "hitpointsmaxbonus":      return "Max Health"
+    if ty == "healbonus":              return "Healing Cast"       # bonus to healing you output
+    if ty == "healmodifier":           return "Healing Received"   # modifies healing taken (anti-heal etc.)
+    if "cooldownreduction" in ty:      return "Cooldown Rate"
+    if "casttimereduction" in ty:      return "Cast Rate"
+    if ty == "movespeedbonus":         return None if debuff else "Movement Speed"  # enemy move-speed = Slow (CC)
+    if ty.startswith("bonusccduration"): return "CC Duration"
+    if ty == "energycostreduction":    return "Energy"
+    if ty == "crowdcontrolresistance": return "CC Resistance"
+    if ty == "attackrangebonus":       return "Attack Range"
+    if ty == "focusfireprotectionpenetration": return "Resilience Penetration"
+    if ty == "threatbonus":            return "Threat"
+    return None                        # energyregenerationbonus & everything else -> ignored
+
+# --- immunity sub-types (from cceffectimmunity `type=`) ---
+CC_IMMUNITY = {"stun":"Immune to Stun","root":"Immune to Root","slow":"Immune to Slow",
+               "silence":"Immune to Silence","forcedmovement":"Immune to Forced Movement"}
+
+# ---- hand-curated lists (NOT derivable from the dumps — edit freely) ----------------------------
+# Albion doesn't flag toggle abilities, so list their spell ids here:
+TOGGLE_IDS = {
+    "ROYAL_MARCH",    # Royal Sandals
+    "IMMORTAL",       # Mistwalker Hood
+    "ENFEEBLEAURA",   # Guardian Armor
+    "HYPER_FOCUS",    # Feyscale Hat
+    "QS_SLOWROPE",    # Staff of Balance (E)
+}
+# There is no data signal for these immunities, so list the abilities that grant them:
+DEBUFF_IMMUNITY_IDS = {
+    "HYPER_FOCUS",    # Feyscale Hat
+}
+PURGE_IMMUNITY_IDS = {
+    "DEFENSERUN",     # Iron Will
+}
+# ------------------------------------------------------------------------------------------------
 
 # --- cast range (union AoE rule) ---
 EFFECT_ELEMS = ("directattributechange","attributechangeovertime","root","stun","silence",
@@ -320,12 +348,18 @@ def build_abilities(items_xml, spells_xml, loc_xml):
             at=attrs(m.group(1))
             if at.get("attribute","").lower() in ("health","hitpoints"):
                 (db.add("DoT") if (at.get("changepersecond") or at.get("change") or "").startswith("-") else bf.add("HoT"))
-        if "<invincibility" in blob: bf.add("Invulnerability")
-        if re.search(r'<cceffectimmunity[^>]*type="forcedmovement"', blob): bf.add("Immunity to Forced Movement")
         if "damageshield" in blob.lower(): bf.add("Shield")
-        if "Buff" in tags and not bf: bf.add("Other")
-        if "Debuff" in tags and not db: db.add("Other")
-        if "Buff" not in tags: bf=set()
+
+        # immunity sub-types (buff)
+        imm=set()
+        if "<invincibility" in blob: imm.add("Immune to Damage")
+        for t in re.findall(r'<cceffectimmunity[^>]*type="([^"]+)"', blob):
+            if t in CC_IMMUNITY: imm.add(CC_IMMUNITY[t])
+        if sp in DEBUFF_IMMUNITY_IDS: imm.add("Immune to Debuffs")
+        if sp in PURGE_IMMUNITY_IDS:  imm.add("Immune to Purge")
+        if imm: bf.add("Immunity")
+
+        if "Buff" not in tags: bf=set(); imm=set()
         if "Debuff" not in tags: db=set()
 
         # crowd-control kinds (from localized [cc] spans)
@@ -344,7 +378,14 @@ def build_abilities(items_xml, spells_xml, loc_xml):
 
         # cast type
         main_body = S.get(sp,({},""))[1]
-        ct = "Channeled" if "<channelingspell" in main_body else ("Cast time" if float(head.get("castingtime","0") or 0)>0 else "Instant")
+        if sp in TOGGLE_IDS:
+            ct = "Toggle"
+        elif "<channelingspell" in main_body:
+            ct = "Channeled"
+        elif float(head.get("castingtime","0") or 0) > 0:
+            ct = "Cast time"
+        else:
+            ct = "Instant"
 
         # cast range (union AoE rule)
         tgts=set()
@@ -357,7 +398,7 @@ def build_abilities(items_xml, spells_xml, loc_xml):
         cr = "Self" if not affects_other else ("Area" if aoe else "Single-target")
 
         entry = {"id":sp, "n":name, "t":"w" if is_weapon else "a", "tags":tags,
-                 "dmg":sorted(school), "bf":sorted(bf), "db":sorted(db), "cc":sorted(cc),
+                 "dmg":sorted(school), "bf":sorted(bf), "db":sorted(db), "imm":sorted(imm), "cc":sorted(cc),
                  "cd":cd, "ip":ip, "ct":ct, "cr":cr, "desc":clean_desc(rd)}
         if is_weapon: entry["l"] = weapon[sp]["line"]
         abilities.append(entry)

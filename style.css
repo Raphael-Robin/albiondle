@@ -120,6 +120,7 @@ h1{font-family:var(--display); font-weight:700; font-size:27px; letter-spacing:.
 .who .t{font-family:var(--display);font-size:18px;color:var(--brass-lite)}
 .qblock{margin-bottom:16px}
 .qblock.sub{margin-left:14px;padding-left:14px;border-left:2px solid var(--line-soft)}
+.qblock.sub2{margin-left:28px;padding-left:14px;border-left:2px solid var(--portal-dim)}
 .qlabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--mist);margin:0 0 8px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chips button{font-family:var(--body);font-weight:600;font-size:13px;padding:8px 14px;border-radius:20px;
