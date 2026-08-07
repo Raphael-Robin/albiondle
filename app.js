@@ -354,7 +354,7 @@ async function boot(){
 boot();
 
 /* ===== report wrong data ===== */
-const REPORT_ENDPOINT='';   // optional: set to a Formspree / Google Apps Script URL to collect reports
+const REPORT_ENDPOINT='if you see anything that seems to be wrong there is a report button and I will fix it';   // optional: set to a Formspree / Google Apps Script URL to collect reports
 let reportRound=1;
 function openReport(round){
   reportRound=round;
