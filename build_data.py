@@ -68,8 +68,8 @@ TAG_ORDER = ["dmg","cc","mobility","debuff","buff","heal"]
 CC_KEYS = [
     ("stun","Stun"),("root","Root"),("slow","Slow"),("silenc","Silence"),("interrupt","Interrupt"),
     ("sleep","Sleep"),("asleep","Sleep"),
-    ("knockback","Forced Movement"),("knock back","Forced Movement"),("pull","Forced Movement"),
-    ("fear","Forced Movement"),("feared","Forced Movement"),("flee","Forced Movement"),
+    ("knock","Forced Movement"),("thrown","Forced Movement"),("launch","Forced Movement"),
+    ("pull","Forced Movement"),("fear","Forced Movement"),("flee","Forced Movement"),
 ]
 CC_FALLBACK = "Stun"   # used only if a CC-tagged ability yields no keyword
 
@@ -377,6 +377,12 @@ def build_abilities(items_xml, spells_xml, loc_xml):
                     ch = at.get("change") or at.get("changepersecond") or at.get("value") or ""
                     if ch.startswith("-") and at.get("effecttype"):
                         school.add("Magical" if at["effecttype"]=="magic" else "Physical")
+        if len(school) > 1:   # effect tree is ambiguous (a shared sub-effect drags in a stray school)
+            spans = " ".join(re.findall(r'\[dmg\](.*?)\[/dmg\]', rd, re.S|re.I)).lower()  # trust the tooltip
+            tip = set()
+            if "physical" in spans: tip.add("Physical")
+            if "magic" in spans:    tip.add("Magical")
+            if tip: school = tip
         if "Damage" in tags and not school:
             school = {"Magical"} if (is_weapon and weapon[sp]["line"] in MAGIC_LINES) else {"Physical"}
 
@@ -419,10 +425,28 @@ def build_abilities(items_xml, spells_xml, loc_xml):
                 if key in text: cc.add(lab)
             if not cc: cc.add(CC_FALLBACK)
 
-        # cooldown + IP scaling
-        rc = head.get("recastdelay")
-        cd = float(rc) if rc not in (None,"") else 0.0
-        ip = bool(head.get("itempowerrecastdelaymodifier"))
+        # cooldown + IP scaling. The root's recastdelay is the cooldown for a normal ability. For a
+        # combo / multi-part ability the root's recastdelay is 0 (the delay *between* parts) and the
+        # real total cooldown sits on a later part -> follow the spell= continuation chain and take the
+        # largest recastdelay from parts belonging to this same ability (shared id stem), which avoids
+        # grabbing cooldowns from unrelated referenced spells (e.g. Mimic -> TAR_RING).
+        def _rc(h):
+            try: return float(h.get("recastdelay") or 0)
+            except ValueError: return 0.0
+        cd = _rc(head); ip = bool(head.get("itempowerrecastdelaymodifier"))
+        if cd == 0.0:
+            stem = sp.rsplit("_",1)[0] if "_" in sp else sp
+            seen=set()
+            def _chain(u):
+                nonlocal cd, ip
+                if u in seen or u not in S: return
+                seen.add(u); h,b = S[u]
+                if u.startswith(stem):
+                    v = _rc(h)
+                    if v > cd: cd = v; ip = bool(h.get("itempowerrecastdelaymodifier"))
+                for r in re.findall(r'\bspell="([^"]+)"', b):
+                    if r in S: _chain(r)
+            _chain(sp)
 
         # cast type
         main_body = S.get(sp,({},""))[1]
