@@ -178,6 +178,7 @@ function finishRound2(){
 
 /* ===== ROUND 3 ===== */
 function chipGroup(el, values, multi){
+  if(!el)return;
   el.innerHTML=values.map(v=>`<button data-v="${v}">${v}</button>`).join('');
   el.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     if(b.disabled||r3done)return;
@@ -188,9 +189,9 @@ function chipGroup(el, values, multi){
     if(el.id==='bfChips')updateImm();
   }));
 }
-const getSel=el=>[...el.querySelectorAll('button.on')].map(b=>b.dataset.v);
-const getOne=el=>{const b=el.querySelector('button.on');return b?b.dataset.v:null;};
-function toggleBlock(id,show){const el=$(id); if(!show)el.querySelectorAll('button.on').forEach(b=>b.classList.remove('on')); $(id.replace('Chips','Block')).style.display=show?'block':'none';}
+const getSel=el=>el?[...el.querySelectorAll('button.on')].map(b=>b.dataset.v):[];
+const getOne=el=>{const b=el&&el.querySelector('button.on');return b?b.dataset.v:null;};
+function toggleBlock(id,show){const el=$(id); if(!el)return; if(!show)el.querySelectorAll('button.on').forEach(b=>b.classList.remove('on')); const blk=$(id.replace('Chips','Block')); if(blk)blk.style.display=show?'block':'none';}
 function updateImm(){
   const on = getSel($('tagChips')).includes('Buff') && getSel($('bfChips')).includes('Immunity');
   toggleBlock('immChips',on);
@@ -314,11 +315,11 @@ function finishRound3(allCorrect){
 
 /* ===== new game ===== */
 function resetChips(){
-  ['tagChips','dmgChips','bfChips','immChips','dbChips','ccChips','clChips','pgChips','ctChips','crChips'].forEach(id=>
-    $(id).querySelectorAll('button').forEach(b=>{b.className='';b.disabled=false;}));
-  $('dmgBlock').style.display='none'; $('bfBlock').style.display='none'; $('immBlock').style.display='none'; $('dbBlock').style.display='none'; $('ccBlock').style.display='none'; $('clBlock').style.display='none'; $('pgBlock').style.display='none';
-  $('cdInput').value=''; $('cdInput').disabled=false; $('ipBtn').className='ipbtn'; $('ipBtn').disabled=false;
-  $('b3confirm').disabled=false; $('reveal3').innerHTML='';
+  ['tagChips','dmgChips','bfChips','immChips','dbChips','ccChips','clChips','pgChips','ctChips','crChips'].forEach(id=>{
+    const el=$(id); if(el)el.querySelectorAll('button').forEach(b=>{b.className='';b.disabled=false;});});
+  ['dmgBlock','bfBlock','immBlock','dbBlock','ccBlock','clBlock','pgBlock'].forEach(id=>{const el=$(id); if(el)el.style.display='none';});
+  const ci=$('cdInput'); if(ci){ci.value='';ci.disabled=false;} const ib=$('ipBtn'); if(ib){ib.className='ipbtn';ib.disabled=false;}
+  const bc=$('b3confirm'); if(bc)bc.disabled=false; const rv=$('reveal3'); if(rv)rv.innerHTML='';
 }
 function newGame(){
   secret=Math.floor(Math.random()*MAPS.length);
