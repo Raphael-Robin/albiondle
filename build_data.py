@@ -120,6 +120,11 @@ CAST_RANGE_OVERRIDES = {
     "OUTOFCOMBATHEAL": "Self",      # Mend Wounds — bandages yourself out of combat
     "AUTOFIRE2": "Single-target",   # Auto Fire — focuses one target; its AoE scaling is incidental
 }
+
+# hand-added tags for abilities whose tooltip omits a [marker] it should have (keys are marker names)
+FORCE_TAGS = {
+    "SPINNING_SMASH": {"mobility"},   # Onslaught — spins toward a targeted position (a gap-closer)
+}
 # ------------------------------------------------------------------------------------------------
 
 # --- cast range: Self (affects only caster) / Single-target (one other) / Area (can hit multiple) ---
@@ -364,8 +369,9 @@ def build_abilities(items_xml, spells_xml, loc_xml):
         head = S.get(sp, ({},""))[0]
         rd = raw_desc(sp) or ""
 
-        # tags (from [..] markers)
+        # tags (from [..] markers, plus any hand-added ones)
         found = {t for t in re.findall(r'\[([a-z]+)\]', rd) if t in TAG_MARK}
+        found |= FORCE_TAGS.get(sp, set())
         tags = [TAG_MARK[t] for t in TAG_ORDER if t in found]
 
         # damage school
