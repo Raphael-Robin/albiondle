@@ -15,14 +15,16 @@ function initData(maps,abilities){
   AB_POOL=ABILITIES.map((a,i)=>i).filter(i=>ABILITIES[i].tags&&ABILITIES[i].tags.length>0);
 }
 
-const TAGS=['Damage','Crowd Control','Mobility','Debuff','Buff','Heal'];
+const TAGS=['Damage','Crowd Control','Mobility','Debuff','Buff','Heal','Cleanse','Purge'];
 const DMG=['Physical','Magical'];
 const BUFF=['Resistances','Movement Speed','Ability Damage','Autoattack Damage','Damage vs Players/All','Attack Speed','Cast Rate','Cooldown Rate','Shield','HoT','Healing Cast','Healing Received','Max Health','CC Duration','Energy','CC Resistance','Attack Range','Resilience Penetration','Immunity'];
 const DEBUFF=['Resistances','Ability Damage','Autoattack Damage','Damage vs Players/All','Attack Speed','Cast Rate','Cooldown Rate','DoT','Healing Cast','Healing Received','Max Health','CC Duration','Energy','CC Resistance','Attack Range','Resilience Penetration'];
 const IMM=['Immune to Damage','Immune to Stun','Immune to Root','Immune to Slow','Immune to Silence','Immune to Forced Movement','Immune to Purge','Immune to Debuffs'];
 const CC=['Stun','Root','Slow','Silence','Interrupt','Sleep','Forced Movement'];
+const CLEANSE=['Stun','Root','Slow','Silence','Debuffs'];
+const PURGE=['Buffs','Movement Speed','HoTs','Shields','Invisibility'];
 const CT=['Instant','Cast time','Channeled','Toggle'];
-const CR=['Self cast','Targeted','Area of Effect'];
+const CR=['Self','Targeted','Free aim'];
 
 let score={streak:0,best:0};
 try{const s=JSON.parse(localStorage.getItem('albiondle_score')); if(s)score=s;}catch(e){}
@@ -199,6 +201,8 @@ function updateSubs(){
   toggleBlock('bfChips',t.has('Buff'));
   toggleBlock('dbChips',t.has('Debuff'));
   toggleBlock('ccChips',t.has('Crowd Control'));
+  toggleBlock('clChips',t.has('Cleanse'));
+  toggleBlock('pgChips',t.has('Purge'));
   updateImm();
 }
 function buildR3Chips(){
@@ -208,6 +212,8 @@ function buildR3Chips(){
   chipGroup($('immChips'),IMM,true);
   chipGroup($('dbChips'),DEBUFF,true);
   chipGroup($('ccChips'),CC,true);
+  chipGroup($('clChips'),CLEANSE,true);
+  chipGroup($('pgChips'),PURGE,true);
   chipGroup($('ctChips'),CT,false);
   chipGroup($('crChips'),CR,false);
   $('ipBtn').addEventListener('click',()=>{
@@ -255,7 +261,7 @@ function colorOne(el,answer){
 }
 function submit3confirm(){
   if(r3done||r3stage!=='attrs')return; const a=ABILITIES[secretAb];
-  const gTags=getSel($('tagChips')), gDmg=getSel($('dmgChips')), gBf=getSel($('bfChips')), gImm=getSel($('immChips')), gDb=getSel($('dbChips')), gCc=getSel($('ccChips'));
+  const gTags=getSel($('tagChips')), gDmg=getSel($('dmgChips')), gBf=getSel($('bfChips')), gImm=getSel($('immChips')), gDb=getSel($('dbChips')), gCc=getSel($('ccChips')), gCl=getSel($('clChips')), gPg=getSel($('pgChips'));
   const gCt=getOne($('ctChips')), gCr=getOne($('crChips'));
   const ipSel=$('ipBtn').classList.contains('on'); const cdRaw=$('cdInput').value.trim();
   const cdVal=cdRaw===''?null:parseFloat(cdRaw);
@@ -277,6 +283,10 @@ function submit3confirm(){
   colorMulti($('dbChips'),a.tags.includes('Debuff')?a.db:[]);
   if(a.tags.includes('Crowd Control')){const ok=setEq(gCc,a.cc); add('CC type',ok,gCc.join(', '),a.cc.join(', ')); }
   colorMulti($('ccChips'),a.tags.includes('Crowd Control')?a.cc:[]);
+  if(a.tags.includes('Cleanse')){const ok=setEq(gCl,a.cl); add('Cleanse type',ok,gCl.join(', '),a.cl.join(', ')); }
+  colorMulti($('clChips'),a.tags.includes('Cleanse')?a.cl:[]);
+  if(a.tags.includes('Purge')){const ok=setEq(gPg,a.pg); add('Purge type',ok,gPg.join(', '),a.pg.join(', ')); }
+  colorMulti($('pgChips'),a.tags.includes('Purge')?a.pg:[]);
   add('Cast type',gCt===a.ct,gCt,a.ct); colorOne($('ctChips'),a.ct);
   add('Targeting',gCr===a.cr,gCr,a.cr); colorOne($('crChips'),a.cr);
   const cdAns=a.ip?'Scales with IP':a.cd+'s'; const cdGuess=ipSel?'Scales with IP':(cdRaw===''?'—':cdRaw+'s');
@@ -304,9 +314,9 @@ function finishRound3(allCorrect){
 
 /* ===== new game ===== */
 function resetChips(){
-  ['tagChips','dmgChips','bfChips','immChips','dbChips','ccChips','ctChips','crChips'].forEach(id=>
+  ['tagChips','dmgChips','bfChips','immChips','dbChips','ccChips','clChips','pgChips','ctChips','crChips'].forEach(id=>
     $(id).querySelectorAll('button').forEach(b=>{b.className='';b.disabled=false;}));
-  $('dmgBlock').style.display='none'; $('bfBlock').style.display='none'; $('immBlock').style.display='none'; $('dbBlock').style.display='none'; $('ccBlock').style.display='none';
+  $('dmgBlock').style.display='none'; $('bfBlock').style.display='none'; $('immBlock').style.display='none'; $('dbBlock').style.display='none'; $('ccBlock').style.display='none'; $('clBlock').style.display='none'; $('pgBlock').style.display='none';
   $('cdInput').value=''; $('cdInput').disabled=false; $('ipBtn').className='ipbtn'; $('ipBtn').disabled=false;
   $('b3confirm').disabled=false; $('reveal3').innerHTML='';
 }

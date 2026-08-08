@@ -113,11 +113,11 @@ DEBUFF_IMMUNITY_IDS = {
 PURGE_IMMUNITY_IDS = {
     "DEFENSERUN",     # Iron Will
 }
-# Targeting overrides for the rare ability the auto-rule still gets wrong. Add "SPELL_ID": "Area of Effect"
-# (or "Targeted"/"Self cast") as you find them in playtesting.
+# Targeting overrides for the rare ability the auto-rule still gets wrong. Add "SPELL_ID": "Free aim"
+# (or "Targeted"/"Self") as you find them in playtesting.
 CAST_RANGE_OVERRIDES = {
-    "LEVITATE": "Self cast",          # self-only channel — restores your own HP/energy/resistances
-    "OUTOFCOMBATHEAL": "Self cast",   # Mend Wounds — bandages yourself out of combat
+    "LEVITATE": "Self",               # self-only channel — restores your own HP/energy/resistances
+    "OUTOFCOMBATHEAL": "Self",        # Mend Wounds — bandages yourself out of combat
     "AUTOFIRE2": "Targeted",          # Auto Fire — focuses one target; its AoE scaling is incidental
 }
 
@@ -125,6 +125,14 @@ CAST_RANGE_OVERRIDES = {
 FORCE_TAGS = {
     "SPINNING_SMASH": {"mobility"},   # Onslaught — spins toward a targeted position (a gap-closer)
 }
+
+# <removeactiveeffects category="..."> -> player-facing removal type(s).
+# Cleanse hits you/allies. In Albion "crowdcontrol" cleanse lifts the soft CC (root/slow/silence) but
+# NOT stun, so we expand it to those three (Stun stays a decoy the player must know isn't cleansed).
+# Purge strips positive effects off enemies.
+CLEANSE_CATS = {"crowdcontrol": {"Root","Slow","Silence"}, "debuff": {"Debuffs"}}
+PURGE_CATS   = {"buff":"Buffs", "movementbuff":"Movement Speed", "heal":"HoTs",
+                "buff_damageshield":"Shields", "invisibility":"Invisibility"}
 # ------------------------------------------------------------------------------------------------
 
 # --- cast range: Self (affects only caster) / Single-target (one other) / Area (can hit multiple) ---
@@ -374,6 +382,15 @@ def build_abilities(items_xml, spells_xml, loc_xml):
         found |= FORCE_TAGS.get(sp, set())
         tags = [TAG_MARK[t] for t in TAG_ORDER if t in found]
 
+        # cleanse (strip CC/debuffs off you or allies) and purge (strip buffs off enemies)
+        cleanse=set(); purge=set()
+        for m in re.finditer(r'<removeactiveeffects([^>]*)/?>', blob):
+            cat = attrs(m.group(1)).get("category","")
+            if   cat in CLEANSE_CATS: cleanse |= CLEANSE_CATS[cat]
+            elif cat in PURGE_CATS:   purge.add(PURGE_CATS[cat])
+        if cleanse: tags.append("Cleanse")
+        if purge:   tags.append("Purge")
+
         # damage school
         school=set()
         for h,b in pairs:
@@ -487,11 +504,12 @@ def build_abilities(items_xml, spells_xml, loc_xml):
                      or re.search(r'deletewhenmaxtargetshit="(?:[2-9]|\d\d)"', blob)
                      or hostile_area(blob)
                      or ally_heal_area(blob))
-        cr = "Self cast" if not affects_other else ("Area of Effect" if multi else "Targeted")
+        cr = "Self" if not affects_other else ("Free aim" if multi else "Targeted")
         if sp in CAST_RANGE_OVERRIDES: cr = CAST_RANGE_OVERRIDES[sp]
 
         entry = {"id":sp, "n":name, "t":"w" if is_weapon else "a", "tags":tags,
                  "dmg":sorted(school), "bf":sorted(bf), "db":sorted(db), "imm":sorted(imm), "cc":sorted(cc),
+                 "cl":sorted(cleanse), "pg":sorted(purge),
                  "cd":cd, "ip":ip, "ct":ct, "cr":cr, "desc":clean_desc(rd)}
         if is_weapon: entry["l"] = weapon[sp]["line"]
         else: entry["p"] = (sorted(armor[sp]["pieces"]) or ["Armor"])[0]   # Helmet / Armor / Boots
