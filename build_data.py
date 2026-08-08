@@ -113,12 +113,12 @@ DEBUFF_IMMUNITY_IDS = {
 PURGE_IMMUNITY_IDS = {
     "DEFENSERUN",     # Iron Will
 }
-# Cast-range overrides for the rare ability the auto-rule still gets wrong. Add "SPELL_ID": "Area"
-# (or "Single-target"/"Self") as you find them in playtesting.
+# Targeting overrides for the rare ability the auto-rule still gets wrong. Add "SPELL_ID": "Area of Effect"
+# (or "Targeted"/"Self cast") as you find them in playtesting.
 CAST_RANGE_OVERRIDES = {
-    "LEVITATE": "Self",             # self-only channel — restores your own HP/energy/resistances
-    "OUTOFCOMBATHEAL": "Self",      # Mend Wounds — bandages yourself out of combat
-    "AUTOFIRE2": "Single-target",   # Auto Fire — focuses one target; its AoE scaling is incidental
+    "LEVITATE": "Self cast",          # self-only channel — restores your own HP/energy/resistances
+    "OUTOFCOMBATHEAL": "Self cast",   # Mend Wounds — bandages yourself out of combat
+    "AUTOFIRE2": "Targeted",          # Auto Fire — focuses one target; its AoE scaling is incidental
 }
 
 # hand-added tags for abilities whose tooltip omits a [marker] it should have (keys are marker names)
@@ -487,7 +487,7 @@ def build_abilities(items_xml, spells_xml, loc_xml):
                      or re.search(r'deletewhenmaxtargetshit="(?:[2-9]|\d\d)"', blob)
                      or hostile_area(blob)
                      or ally_heal_area(blob))
-        cr = "Self" if not affects_other else ("Area" if multi else "Single-target")
+        cr = "Self cast" if not affects_other else ("Area of Effect" if multi else "Targeted")
         if sp in CAST_RANGE_OVERRIDES: cr = CAST_RANGE_OVERRIDES[sp]
 
         entry = {"id":sp, "n":name, "t":"w" if is_weapon else "a", "tags":tags,

@@ -22,7 +22,7 @@ const DEBUFF=['Resistances','Ability Damage','Autoattack Damage','Damage vs Play
 const IMM=['Immune to Damage','Immune to Stun','Immune to Root','Immune to Slow','Immune to Silence','Immune to Forced Movement','Immune to Purge','Immune to Debuffs'];
 const CC=['Stun','Root','Slow','Silence','Interrupt','Sleep','Forced Movement'];
 const CT=['Instant','Cast time','Channeled','Toggle'];
-const CR=['Self','Single-target','Area'];
+const CR=['Self cast','Targeted','Area of Effect'];
 
 let score={streak:0,best:0};
 try{const s=JSON.parse(localStorage.getItem('albiondle_score')); if(s)score=s;}catch(e){}
@@ -278,7 +278,7 @@ function submit3confirm(){
   if(a.tags.includes('Crowd Control')){const ok=setEq(gCc,a.cc); add('CC type',ok,gCc.join(', '),a.cc.join(', ')); }
   colorMulti($('ccChips'),a.tags.includes('Crowd Control')?a.cc:[]);
   add('Cast type',gCt===a.ct,gCt,a.ct); colorOne($('ctChips'),a.ct);
-  add('Cast range',gCr===a.cr,gCr,a.cr); colorOne($('crChips'),a.cr);
+  add('Targeting',gCr===a.cr,gCr,a.cr); colorOne($('crChips'),a.cr);
   const cdAns=a.ip?'Scales with IP':a.cd+'s'; const cdGuess=ipSel?'Scales with IP':(cdRaw===''?'—':cdRaw+'s');
   add('Cooldown',cdOk,cdGuess,cdAns);
   $('ipBtn').disabled=true; $('cdInput').disabled=true;
@@ -354,7 +354,7 @@ async function boot(){
 boot();
 
 /* ===== report wrong data ===== */
-const REPORT_ENDPOINT='https://script.google.com/macros/s/AKfycbzP7XCn9rGyA3VtwRw5qEPsMyDzDPpj3lWNZ0PRwZfVHgAxP5cpeekH602c89u8fIx0Dg/exec';   // optional: set to a Formspree / Google Apps Script URL to collect reports
+const REPORT_ENDPOINT='';   // optional: set to a Formspree / Google Apps Script URL to collect reports
 let reportRound=1;
 function openReport(round){
   reportRound=round;
@@ -378,7 +378,7 @@ async function submitReport(){
   try{const arr=JSON.parse(localStorage.getItem('albiondle_reports')||'[]'); arr.push(rep);
     localStorage.setItem('albiondle_reports',JSON.stringify(arr));}catch(e){}
   console.log('[Albiondle report]',rep);
-  if(REPORT_ENDPOINT){try{await fetch(REPORT_ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(rep)});}catch(e){}}
+  if(REPORT_ENDPOINT){try{await fetch(REPORT_ENDPOINT,{method:'POST',mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(rep)});}catch(e){console.warn('[Albiondle] report POST failed',e);}}
   $('rpStatus').style.color='var(--portal)'; $('rpStatus').textContent='Thanks — report saved.';
   setTimeout(closeReport,900);
 }
