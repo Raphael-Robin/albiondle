@@ -392,20 +392,23 @@ function openReport(round){
   $('reportContext').textContent=ctx;
   $('rpEntity').value=entity; $('rpField').value=''; $('rpCorrect').value=''; $('rpNotes').value='';
   $('rpStatus').textContent='';
-  $('reportModal').classList.add('open'); $('rpField').focus();
+  $('reportModal').classList.add('open'); $('rpSubmit').disabled=false; $('rpField').focus();
 }
 function closeReport(){ $('reportModal').classList.remove('open'); }
 async function submitReport(){
+  const btn=$('rpSubmit'); if(btn.disabled)return;   // ignore while a send is in flight
   const rep={ts:new Date().toISOString(), round:reportRound,
     entity:$('rpEntity').value.trim(), issue:$('rpField').value.trim(),
     correct:$('rpCorrect').value.trim(), notes:$('rpNotes').value.trim()};
   if(!rep.entity || (!rep.issue && !rep.notes)){
     $('rpStatus').style.color='#e6b6a6'; $('rpStatus').textContent='Please name the entry and what looks wrong.'; return;
   }
+  btn.disabled=true; $('rpStatus').style.color='var(--mist)'; $('rpStatus').textContent='Sending…';
   try{const arr=JSON.parse(localStorage.getItem('albiondle_reports')||'[]'); arr.push(rep);
     localStorage.setItem('albiondle_reports',JSON.stringify(arr));}catch(e){}
   console.log('[Albiondle report]',rep);
   if(REPORT_ENDPOINT){try{await fetch(REPORT_ENDPOINT,{method:'POST',mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(rep)});}catch(e){console.warn('[Albiondle] report POST failed',e);}}
+  btn.disabled=false;   // unlock once the request has settled, ready for the next report
   $('rpStatus').style.color='var(--portal)'; $('rpStatus').textContent='Thanks — report saved.';
   setTimeout(closeReport,900);
 }

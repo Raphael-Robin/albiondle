@@ -201,6 +201,7 @@ body.reveal-all .round.locked{display:block}
 .modal textarea{min-height:56px; resize:vertical}
 .modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:18px}
 .modal-actions button{font-family:var(--body); font-weight:600; font-size:13px; padding:9px 16px; border-radius:8px; cursor:pointer}
+.modal-actions button:disabled{opacity:.5; cursor:default}
 #rpCancel{background:transparent; color:var(--mist); border:1px solid var(--line)}
 #rpCancel:hover{color:var(--text)}
 #rpSubmit{background:var(--portal); color:#04211d; border:1px solid var(--portal)}
