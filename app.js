@@ -17,7 +17,7 @@ function initData(maps,abilities){
 
 const TAGS=['Damage','Crowd Control','Mobility','Debuff','Buff','Heal','Cleanse','Purge'];
 const DMG=['Physical','Magical'];
-const BUFF=['Resistances','Movement Speed','Ability Damage','Autoattack Damage','Damage vs Players/All','Attack Speed','Cast Rate','Cooldown Rate','Shield','HoT','Healing Cast','Healing Received','Max Health','CC Duration','Energy','CC Resistance','Attack Range','Resilience Penetration','Immunity'];
+const BUFF=['Resistances','Movement Speed','Ability Damage','Autoattack Damage','Damage vs Players/All','Attack Speed','Cast Rate','Cooldown Rate','Shield','HoT','Healing Cast','Healing Received','Max Health','CC Duration','Energy','CC Resistance','Attack Range','Resilience Penetration','Charges','Immunity'];
 const DEBUFF=['Resistances','Ability Damage','Autoattack Damage','Damage vs Players/All','Attack Speed','Cast Rate','Cooldown Rate','DoT','Healing Cast','Healing Received','Max Health','CC Duration','Energy','CC Resistance','Attack Range','Resilience Penetration'];
 const IMM=['Immune to Damage','Immune to Stun','Immune to Root','Immune to Slow','Immune to Silence','Immune to Forced Movement','Immune to Purge','Immune to Debuffs'];
 const CC=['Stun','Root','Slow','Silence','Interrupt','Sleep','Forced Movement'];

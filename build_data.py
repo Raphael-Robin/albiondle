@@ -113,12 +113,9 @@ DEBUFF_IMMUNITY_IDS = {
 PURGE_IMMUNITY_IDS = {
     "DEFENSERUN",     # Iron Will
 }
-# Targeting overrides for the rare ability the auto-rule still gets wrong. Add "SPELL_ID": "Free aim"
-# (or "Targeted"/"Self") as you find them in playtesting.
+# Targeting overrides — the rule (main-spell target) is authoritative, so this is normally empty.
+# Add "SPELL_ID": "Self"/"Targeted"/"Free aim" only for a genuine one-off the data mislabels.
 CAST_RANGE_OVERRIDES = {
-    "LEVITATE": "Self",               # self-only channel — restores your own HP/energy/resistances
-    "OUTOFCOMBATHEAL": "Self",        # Mend Wounds — bandages yourself out of combat
-    "AUTOFIRE2": "Targeted",          # Auto Fire — focuses one target; its AoE scaling is incidental
 }
 
 # hand-added tags for abilities whose tooltip omits a [marker] it should have (keys are marker names)
@@ -135,12 +132,9 @@ PURGE_CATS   = {"buff":"Buffs", "movementbuff":"Movement Speed", "heal":"HoTs",
                 "buff_damageshield":"Shields", "invisibility":"Invisibility"}
 # ------------------------------------------------------------------------------------------------
 
-# --- cast range: Self (affects only caster) / Single-target (one other) / Area (can hit multiple) ---
-# Effect-element targets that count as "affects someone other than the caster".
-EFFECT_ELEMS = ("directattributechange","attributechangeovertime","root","stun","silence",
-                "knockback","forcedmovement","buffovertime","healovertime","projectile")
-TGT_OTHER = {"enemy","enemies","opponent","knockeddownplayer","friendother","friendotherplayers",
-             "ally","allies","other","friendall"}   # friendall = "any one ally" (a single-target pick)
+# --- Targeting (how the player aims a spell) is read from the main spell's `target` attribute. ---
+# Everything that isn't self / none / a ground position is a unit target (Targeted).
+GROUND_TARGETS = {"ground"}   # freely-aimed position/direction spells
 
 # spell-reference attributes to follow when walking a spell's effect tree
 REF_ATTRS = ["spell","effect","name","endeffect","chargespell","spellchargesspell",
@@ -152,32 +146,15 @@ REF_ATTRS = ["spell","effect","name","endeffect","chargespell","spellchargesspel
 def attrs(s):
     return dict(re.findall(r'(\w+)="([^"]*)"', s))
 
-def hostile_area(blob):
-    """True if an area radius (>=2) sits on a hostile (enemy) effect -> a real multi-enemy AoE.
-    An ally-only radius (e.g. Shield Charge's ally shield) does NOT count as multi-target."""
-    for m in re.finditer(r'<\w+\b([^>]*)', blob):
-        at = attrs(m.group(1)); r = at.get("effectarearadius")
-        if r and at.get("target") in ("enemy","enemies","opponent"):
-            try:
-                if float(r) >= 2: return True
-            except ValueError:
-                pass
-    return False
-
-# elements that are beneficial when aimed at allies (heal / HoT / buff / applied buff-spell).
-# Deliberately excludes <damageshield>, so a charged ally shield (Shield Charge) stays single-target.
-ALLY_HEALBUFF = ("directattributechange","attributechangeovertime","buffovertime","healovertime","applyspell")
-ALLY_TARGETS = ("friendall","friendother","friendotherplayers","ally","allies","friend")
-def ally_heal_area(blob):
-    """True if an area radius (>=2) sits on a friend-targeted heal/buff -> reaches multiple allies."""
-    for el in ALLY_HEALBUFF:
-        for m in re.finditer(r'<'+el+r'\b([^>]*)', blob):
-            at = attrs(m.group(1)); r = at.get("effectarearadius")
-            if r and at.get("target") in ALLY_TARGETS:
-                try:
-                    if float(r) >= 2: return True
-                except ValueError:
-                    pass
+# self / ally "weapon charges" or "stacks" that build up on you (or an ally) as a buff — e.g. Assassin
+# Spirit Charges, Heroic Charges, Spirit Spear Charges. Requires a grant verb next to the charge AND an
+# explicit friendly recipient, so enemy-applied charges (Vile Curse) and abilities that merely *scale
+# with* existing charges (Mighty Blow) are excluded.
+_CHARGE_OBJ   = re.compile(r"\b(?:appl(?:y|ies|ying)|grant(?:s|ing)?)\b[\w' ,]{0,28}?\b(?:charges?|stacks?)\b", re.I)
+_CHARGE_RECIP = re.compile(r"\bon\s+you\b|\bto\s+you\b|\byourself\b|targeted ally|allies (?:hit )?receive|\brenew\b", re.I)
+def grants_self_charge(rd):
+    for s in re.split(r'(?<=[.\n])\s*', rd or ""):
+        if _CHARGE_OBJ.search(s) and _CHARGE_RECIP.search(s): return True
     return False
 
 def load(src, name):
@@ -404,13 +381,15 @@ def build_abilities(items_xml, spells_xml, loc_xml):
                     ch = at.get("change") or at.get("changepersecond") or at.get("value") or ""
                     if ch.startswith("-") and at.get("effecttype"):
                         school.add("Magical" if at["effecttype"]=="magic" else "Physical")
-        if len(school) > 1:   # effect tree is ambiguous (a shared sub-effect drags in a stray school)
-            spans = " ".join(re.findall(r'\[dmg\](.*?)\[/dmg\]', rd, re.S|re.I)).lower()  # trust the tooltip
-            tip = set()
-            if "physical" in spans: tip.add("Physical")
-            if "magic" in spans:    tip.add("Magical")
-            if tip: school = tip
-        if "Damage" in tags and not school:
+        # the tooltip's [dmg] wording: use it to disambiguate an ambiguous tree, OR to supply the
+        # school when the effect tree yields none (e.g. reflect abilities like Requite -> magical).
+        spans = " ".join(re.findall(r'\[dmg\](.*?)\[/dmg\]', rd, re.S|re.I)).lower()
+        tip = set()
+        if "physical" in spans: tip.add("Physical")
+        if "magic" in spans:    tip.add("Magical")
+        if tip and (len(school) > 1 or not school):
+            school = tip
+        if "Damage" in tags and not school:   # last resort: weapon line (staves are magical)
             school = {"Magical"} if (is_weapon and weapon[sp]["line"] in MAGIC_LINES) else {"Physical"}
 
         # buff / debuff kinds (direction-aware)
@@ -439,6 +418,7 @@ def build_abilities(items_xml, spells_xml, loc_xml):
         if sp in DEBUFF_IMMUNITY_IDS: imm.add("Immune to Debuffs")
         if sp in PURGE_IMMUNITY_IDS:  imm.add("Immune to Purge")
         if imm: bf.add("Immunity")
+        if grants_self_charge(clean_desc(rd)): bf.add("Charges")   # builds weapon charges/stacks on you or an ally
 
         if "Buff" not in tags: bf=set(); imm=set()
         if "Debuff" not in tags: db=set()
@@ -486,29 +466,14 @@ def build_abilities(items_xml, spells_xml, loc_xml):
         else:
             ct = "Instant"
 
-        # cast range. "Affects someone else" comes from offensive tags + effect targets; "can hit
-        # multiple" is read from per-target scaling / area (semantically reliable). Main-spell target
-        # keywords are deliberately NOT used — target="all" is overloaded (self-stacks, "all debuffs").
-        tgts=set()
-        for el in EFFECT_ELEMS:
-            for m in re.finditer(r'<'+el+r'\b([^>]*)', blob):
-                t=attrs(m.group(1)).get("target")
-                if t: tgts.add(t)
-        tag_offense = any(x in tags for x in ("Damage","Crowd Control","Debuff"))
-        # a reflect shield is cast on yourself; its "damage" is only reflected when hit, not actively
-        # aimed at anyone (e.g. Deflecting Spin, Inferno Shield, Retaliate) -> Self, not Single-target.
-        reflect_shield = (tag_offense and "reflectdamage" in blob.lower()
-                          and head.get("target")=="self" and not (tgts & TGT_OTHER))
-        affects_other = ((tag_offense and not reflect_shield)
-                         or bool(tgts & TGT_OTHER)
-                         or head.get("target") in TGT_OTHER)   # ability cast directly on an ally/enemy (e.g. Shield Charge)
-        multi = bool(re.search(r'targetcount(?:value|duration)bonusfactor="[0-9.]*[1-9]', blob)
-                     or re.search(r'<spelleffectarea\b', blob)
-                     or re.search(r'maxtargets="(?:[2-9]|\d\d)"', blob)
-                     or re.search(r'deletewhenmaxtargetshit="(?:[2-9]|\d\d)"', blob)
-                     or hostile_area(blob)
-                     or ally_heal_area(blob))
-        cr = "Self" if not affects_other else ("Free aim" if multi else "Targeted")
+        # Targeting = how the player decides where the spell goes, read from the main spell's target:
+        #   self / (none)  -> Self      (centred on you or has no location: buffs, PBAoE, self-channels)
+        #   ground         -> Free aim  (you freely aim a position / direction)
+        #   any unit target-> Targeted  (you lock onto one enemy or ally; incl. all/allplayers = "the target")
+        mt = head.get("target")
+        if mt in (None, "", "self"):   cr = "Self"
+        elif mt in GROUND_TARGETS:     cr = "Free aim"
+        else:                          cr = "Targeted"
         if sp in CAST_RANGE_OVERRIDES: cr = CAST_RANGE_OVERRIDES[sp]
 
         entry = {"id":sp, "n":name, "t":"w" if is_weapon else "a", "tags":tags,
