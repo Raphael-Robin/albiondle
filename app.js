@@ -40,7 +40,7 @@ function autocomplete(input, box, source, onEnter){
     const a=[],b=[]; for(const it of source){const p=it.low.indexOf(q); if(p===0)a.push(it); else if(p>0)b.push(it);}
     items=[...a,...b].slice(0,8); sel=-1;
     if(!items.length){close();return;}
-    box.innerHTML=items.map(it=>`<div>${it.n}<span class="tag">${it.tag}</span></div>`).join('');
+    box.innerHTML=items.map(it=>`<div>${it.n}</div>`).join('');
     box.classList.add('open');
     [...box.children].forEach((ch,k)=>ch.addEventListener('mousedown',e=>{e.preventDefault();choose(k);}));
   }
@@ -75,7 +75,7 @@ function abilityAC(input, box, onEnter){
       if((it.line&&linesMatch.includes(it.line))||(pieceMatch&&it.piece===pieceMatch)){lineSpells.push(it);seen.add(it.i);}}}
     items=[...starts,...contains,...lineSpells].sort((x,y)=>x.n.localeCompare(y.n)).slice(0,100); sel=-1;
     if(!items.length){close();return;}
-    box.innerHTML=items.map(it=>`<div>${it.n}<span class="tag">${it.tag}</span></div>`).join('');
+    box.innerHTML=items.map(it=>`<div>${it.n}</div>`).join('');
     box.classList.add('open');
     [...box.children].forEach((ch,k)=>ch.addEventListener('mousedown',e=>{e.preventDefault();choose(k);}));
   }
@@ -111,13 +111,27 @@ function featCell(gf,sf){
   const label=gf.length?gf.map(f=>f.replace("Smuggler's Den","Smuggler")).join(', '):'None';
   return tile(cls,label,'');
 }
+function exitsCell(ge,se){                       // which edges the guessed map has portals on
+  const S=new Set(se);
+  const same=ge.length===se.length&&ge.every(x=>S.has(x)); const overlap=ge.some(x=>S.has(x));
+  return `<div class="cell ${same?'g':(overlap?'y':'r')}">${ge.join(' ')||'—'}</div>`;
+}
+const ARROW8={'0':'→','1':'↗','2':'↑','3':'↖','4':'←','-4':'←','-3':'↙','-2':'↓','-1':'↘'};
+function dirCell(g,s,win){                        // 8-way arrow from guess toward the secret (world coords, +x=E +y=N)
+  if(win)return `<div class="cell g dir"><span class="arrow">◎</span></div>`;
+  const dx=s.x-g.x, dy=s.y-g.y;
+  if(!dx&&!dy)return `<div class="cell name dir"><span class="arrow">•</span></div>`;
+  const oct=Math.round(Math.atan2(dy,dx)/(Math.PI/4));
+  return `<div class="cell name dir"><span class="arrow">${ARROW8[oct]||'•'}</span></div>`;
+}
 function submit1(){
   if(r1done)return; const gi=resolve($('g1'),MAP_SRC); if(gi<0)return;
   const g=MAPS[gi], s=MAPS[secret]; $('grid1').style.display='block';
   const win=gi===secret; const row=document.createElement('div'); row.className='growrow';
   row.innerHTML=tile('name'+(win?' g':''),g.n,'')+numCell(g.q,s.q)+numCell(g.t,s.t)+
     tile(g.b===s.b?'g':'r',g.b,'')+featCell(g.f,s.f)+
-    tile(g.c===s.c?'g':'r',g.c.replace(' Portal','').replace("'s Rest","'s"),g.c.includes('Rest')?'rest':'portal');
+    tile(g.c===s.c?'g':'r',g.c.replace(' Portal','').replace("'s Rest","'s"),g.c.includes('Rest')?'rest':'portal')+
+    exitsCell(g.ex,s.ex)+dirCell(g,s,win);
   $('rows1').prepend(row); $('g1').value=''; if(win)finishRound1();
 }
 function finishRound1(){
@@ -244,6 +258,7 @@ function submit3name(){
   setTimeout(()=>$('attrstage').scrollIntoView({behavior:'smooth',block:'nearest'}),60);
 }
 function colorMulti(el,answer){
+  if(!el)return;
   const A=new Set(answer);
   el.querySelectorAll('button').forEach(b=>{
     const v=b.dataset.v, picked=b.classList.contains('on');
@@ -254,6 +269,7 @@ function colorMulti(el,answer){
   });
 }
 function colorOne(el,answer){
+  if(!el)return;
   el.querySelectorAll('button').forEach(b=>{
     const v=b.dataset.v, picked=b.classList.contains('on'); b.classList.remove('on');
     if(v===answer)b.classList.add('ok'); else if(picked)b.classList.add('no');
@@ -365,7 +381,7 @@ async function boot(){
 boot();
 
 /* ===== report wrong data ===== */
-const REPORT_ENDPOINT='';   // optional: set to a Formspree / Google Apps Script URL to collect reports
+const REPORT_ENDPOINT='https://script.google.com/macros/s/AKfycbzP7XCn9rGyA3VtwRw5qEPsMyDzDPpj3lWNZ0PRwZfVHgAxP5cpeekH602c89u8fIx0Dg/exec';
 let reportRound=1;
 function openReport(round){
   reportRound=round;

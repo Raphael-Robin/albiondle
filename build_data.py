@@ -240,24 +240,27 @@ def build_maps(world_xml):
         if "Castle" in marks:          feats.append("Castle")
         if "Castle_Outpost" in marks:  feats.append("Outpost")
         if marks & SMUGGLER_MARKERS:   feats.append("Smuggler's Den")
-        # directional neighbours: the diamond edge the portal to that neighbour is on (+ edges for the town BFS)
-        dc, tmp = Counter(), {}
+        # exit edges: the diamond edge of any portal to a black zone OR a city (all visible exits).
+        # black-to-black portals also feed the unambiguous directional neighbours used by Round 2.
+        dc, tmp = Counter(), {}; exit_edges = set()
         for e in exits:
             ea = attrs(e.group(1)); tid = ea.get("targetid","")
             if "@" not in tid: continue
             tgt = tid.split("@")[1]; tc = clusters.get(tgt)
             if not tc: continue
-            if tc["type"] in BLACK_TYPES or is_town(tc["type"]): adj.add((cid,tgt))
-            if tc["type"] in BLACK_TYPES and ea.get("targettype")=="Cluster" and ea.get("pos"):
+            is_black = tc["type"] in BLACK_TYPES; is_city = is_town(tc["type"])
+            if is_black or is_city: adj.add((cid,tgt))
+            if (is_black or is_city) and ea.get("targettype")=="Cluster" and ea.get("pos"):
                 try:
                     px, py = map(float, ea["pos"].split())
                 except ValueError:
                     continue
-                d = portal_edge(px, py); dc[d]+=1; tmp[d]=tgt
+                edge = portal_edge(px, py); exit_edges.add(edge)
+                if is_black: dc[edge]+=1; tmp[edge]=tgt
         nbrs = {d:tmp[d] for d in tmp if dc[d]==1}   # keep only edges with a single portal (unambiguous)
         zones[cid] = {"id":cid, "name":c["name"], "biome":biome, "tier":tier,
                       "quality":int(h["type"].split("_")[-1]), "features":sorted(feats),
-                      "wx":c["wx"], "wy":c["wy"], "nbrs":nbrs}
+                      "wx":c["wx"], "wy":c["wy"], "nbrs":nbrs, "exits":sorted(exit_edges)}
 
     # nearest town by gate-path (BFS over black<->black and black<->town edges)
     G = defaultdict(set)
@@ -284,7 +287,8 @@ def build_maps(world_xml):
     for z in ordered:
         d = {dr:idx[t] for dr,t in z["nbrs"].items() if t in idx}
         out.append({"n":z["name"], "q":z["quality"], "t":int(z["tier"][1:]),
-                    "b":z["biome"], "f":z["features"], "c":z["town"], "d":d})
+                    "b":z["biome"], "f":z["features"], "c":z["town"], "d":d,
+                    "x":z["wx"], "y":z["wy"], "ex":z["exits"]})
     return out
 
 # ============================================================================

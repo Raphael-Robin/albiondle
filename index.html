@@ -35,7 +35,7 @@
     <p class="rhint">A black-zone map is hidden. Guess maps to compare their traits — green matches, yellow partly matches, red misses. Arrows point toward the answer.</p>
     <div class="field"><div class="combo"><input id="g1" autocomplete="off" spellcheck="false" placeholder="Guess a black-zone map"><button class="gbtn" id="b1">Guess</button></div><div class="acx" id="ac1"></div></div>
     <div class="grid" id="grid1" style="display:none">
-      <div class="gridhead"><span>Map</span><span>Quality</span><span>Tier</span><span>Biome</span><span>Features</span><span>Nearest hub</span></div>
+      <div class="gridhead"><span>Map</span><span>Quality</span><span>Tier</span><span>Biome</span><span>Features</span><span>Nearest hub</span><span>Exits</span><span>Toward</span></div>
       <div id="rows1"></div>
     </div>
     <div id="solved1"></div>
@@ -83,6 +83,8 @@
       <div class="qblock sub2" id="immBlock" style="display:none"><p class="qlabel">Immunity type</p><div class="chips" id="immChips"></div></div>
       <div class="qblock sub" id="dbBlock" style="display:none"><p class="qlabel">Debuff type</p><div class="chips" id="dbChips"></div></div>
       <div class="qblock sub" id="ccBlock" style="display:none"><p class="qlabel">Crowd control type</p><div class="chips" id="ccChips"></div></div>
+      <div class="qblock sub" id="clBlock" style="display:none"><p class="qlabel">Cleanse type <span style="opacity:.6">(what it removes from you / allies)</span></p><div class="chips" id="clChips"></div></div>
+      <div class="qblock sub" id="pgBlock" style="display:none"><p class="qlabel">Purge type <span style="opacity:.6">(what it strips off enemies)</span></p><div class="chips" id="pgChips"></div></div>
       <div class="qblock"><p class="qlabel">Cast type</p><div class="chips" id="ctChips"></div></div>
       <div class="qblock"><p class="qlabel">Targeting</p><div class="chips" id="crChips"></div></div>
       <div class="qblock"><p class="qlabel">Cooldown</p>
