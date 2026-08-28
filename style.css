@@ -207,3 +207,70 @@ body.reveal-all .round.locked{display:block}
 #rpSubmit{background:var(--portal); color:#04211d; border:1px solid var(--portal)}
 #rpSubmit:hover{background:var(--brass-lite); border-color:var(--brass-lite)}
 #rpStatus{margin-top:10px; font-size:12.5px; min-height:16px; color:var(--portal)}
+
+/* Menu Cards Container */
+.menu-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+/* Individual Card Styling */
+.menu-card {
+  background: linear-gradient(180deg, var(--void2), #0b141a);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.menu-card:hover {
+  border-color: var(--portal);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.6), 0 0 12px var(--portal-dim);
+}
+
+/* Card Content Elements */
+.mc-kicker {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--portal);
+  margin-bottom: 6px;
+}
+
+.mc-title {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--brass-lite);
+  margin-bottom: 8px;
+}
+
+.mc-desc {
+  font-family: var(--body);
+  font-size: 14px;
+  color: var(--mist);
+  line-height: 1.4;
+  margin-bottom: 16px;
+  flex-grow: 1;
+}
+
+.mc-go {
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--portal);
+  transition: color 0.15s ease;
+}
+
+.menu-card:hover .mc-go {
+  color: var(--brass-lite);
+}
