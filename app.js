@@ -5,7 +5,7 @@ const setEq=(a,b)=>{const A=new Set(a),B=new Set(b);return A.size===B.size&&[...
 const checkSvg='<svg width="18" height="18" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" fill="none" stroke="var(--portal)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 let MAPS=[], ABILITIES=[], MAP_SRC=[], AB_SRC=[], LINES=[], LINE_LOW=[], AB_POOL=[];
-const ICON=id=>`https://render.albiononline.com/v1/spell/${id}.png?size=217`;
+const ICON=id=>`./icons/${id}.png`;
 function initData(maps,abilities){
   MAPS=maps; ABILITIES=abilities;
   MAP_SRC=MAPS.map((m,i)=>({i,n:m.n,low:m.n.toLowerCase(),tag:`T${m.t}·Q${m.q}·${m.b}`}));
