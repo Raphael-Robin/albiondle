@@ -19,87 +19,117 @@
         <path d="M5 22 L22 18 L39 22 L22 26 Z" fill="var(--brass-lite)" opacity=".8"/>
         <circle cx="22" cy="22" r="2.4" fill="#04211d"/>
       </svg>
-      <div><p class="eyebrow">Outlands Daily</p><h1>ALBIONDLE</h1></div>
+      <div><h1>ALBIONDLE</h1></div>
     </div>
-    <div class="controls">
-      <div class="streak">Streak <b id="sStreak">0</b><br>Best <b id="sBest">0</b></div>
-      <button class="newbtn" id="showAll">Show all</button>
+    <div class="controls" id="gameControls" style="display:none">
       <button class="newbtn" id="newGame">New game</button>
+      <button class="newbtn" id="toMenu">Menu</button>
     </div>
   </header>
-  <p class="lede">Three rounds through the black zones. Find the hidden map, trace the gates from it, then identify the ability. One puzzle a day — for now, play as many as you like.</p>
-  <div class="rail"><div class="r" id="rail0"></div><div class="r" id="rail1"></div><div class="r" id="rail2"></div></div>
 
-  <section class="round" id="round1">
-    <div class="rhead"><span class="rnum">ROUND 1</span><h2 class="rtitle">Locate the map</h2></div>
-    <p class="rhint">A black-zone map is hidden. Guess maps to compare their traits — green matches, yellow partly matches, red misses. Arrows point toward the answer.</p>
-    <div class="field"><div class="combo"><input id="g1" autocomplete="off" spellcheck="false" placeholder="Guess a black-zone map"><button class="gbtn" id="b1">Guess</button></div><div class="acx" id="ac1"></div></div>
-    <div class="grid" id="grid1" style="display:none">
-      <div class="gridhead"><span>Map</span><span>Quality</span><span>Tier</span><span>Biome</span><span>Features</span><span>Nearest hub</span><span>Exits</span><span>Toward</span></div>
-      <div id="rows1"></div>
+  <!-- ===== MENU ===== -->
+  <div id="menu">
+    <p class="lede">Two games from Albion Online's black zones. Pick one — each randomises a fresh puzzle every round, play as many as you like.</p>
+    <div class="menu-cards">
+      <button class="menu-card" id="pickMaps">
+        <span class="mc-kicker">Game 1</span>
+        <span class="mc-title">Maps</span>
+        <span class="mc-desc">Find the hidden black-zone map from its traits — then trace the gates from it to where they lead.</span>
+        <span class="mc-go">Play →</span>
+      </button>
+      <button class="menu-card" id="pickAbilities">
+        <span class="mc-kicker">Game 2</span>
+        <span class="mc-title">Abilities</span>
+        <span class="mc-desc">Name the ability from its icon, then pin down every trait — tags, damage, targeting, cooldown and more.</span>
+        <span class="mc-go">Play →</span>
+      </button>
     </div>
-    <div id="solved1"></div>
-    <div class="blockfoot"><button class="reportbtn" data-round="1">⚑ Report wrong data</button></div>
-  </section>
+  </div>
 
-  <section class="round locked" id="round2">
-    <div class="rhead"><span class="rnum">ROUND 2</span><h2 class="rtitle">Trace the gates</h2></div>
-    <p class="rhint">Start on the map you just found and follow each gate in order. Name where you arrive. Hints unlock as you miss.</p>
-    <div class="navtop">
-      <svg class="compass" viewBox="0 0 120 120" aria-hidden="true">
-        <circle class="rose-ring" cx="60" cy="60" r="54"/><circle class="rose-ring" cx="60" cy="60" r="40" opacity=".5"/>
-        <path class="rose-card" d="M60 8 L64 60 L60 112 L56 60 Z"/><path class="rose-card" d="M8 60 L60 64 L112 60 L60 56 Z"/>
-        <path class="spoke" id="sp-NW" d="M60 60 L24 24 L34 52 Z" fill="var(--portal)"/>
-        <path class="spoke" id="sp-NE" d="M60 60 L96 24 L68 34 Z" fill="var(--portal)"/>
-        <path class="spoke" id="sp-SE" d="M60 60 L96 96 L86 68 Z" fill="var(--portal)"/>
-        <path class="spoke" id="sp-SW" d="M60 60 L24 96 L52 86 Z" fill="var(--portal)"/>
-        <circle cx="60" cy="60" r="4" fill="var(--brass-lite)"/>
-        <text class="rose-lbl" x="60" y="6" text-anchor="middle">N</text><text class="rose-lbl" x="60" y="118" text-anchor="middle">S</text>
-        <text class="rose-lbl" x="116" y="63" text-anchor="middle">E</text><text class="rose-lbl" x="4" y="63" text-anchor="middle">W</text>
-      </svg>
-      <div><div class="startmap"><div><div class="lab">Starting map</div><div class="nm" id="navStart">—</div></div></div><div class="gates" id="gates"></div></div>
-    </div>
-    <div class="field" style="margin-top:16px"><div class="combo"><input id="g2" autocomplete="off" spellcheck="false" placeholder="Name the map you arrive at"><button class="gbtn" id="b2">Guess</button></div><div class="acx" id="ac2"></div></div>
-    <div class="guesslist" id="guesses2"></div><div id="hints2"></div><div id="solved2"></div>
-    <div class="blockfoot"><button class="reportbtn" data-round="2">⚑ Report wrong data</button></div>
-  </section>
+  <!-- ===== MAPS GAME (round 1 -> round 2) ===== -->
+  <div id="gameMaps" style="display:none">
+    <div class="rail"><div class="r" id="rail0"></div><div class="r" id="rail1"></div></div>
 
-  <section class="round locked" id="round3">
-    <div class="rhead"><span class="rnum">ROUND 3</span><h2 class="rtitle">Identify the ability</h2></div>
-    <p class="rhint">Name the ability from its icon — type its name, or a weapon line to list its spells. Then fill in everything you know about it and confirm.</p>
-    <div class="abilitywrap">
-      <div class="iconframe" id="abFrame"><img id="abIcon" alt="ability icon"></div>
-      <div class="abside">
-        <div class="field"><div class="combo"><input id="g3" autocomplete="off" spellcheck="false" placeholder="Name the ability"><button class="gbtn" id="b3">Guess</button></div><div class="acx" id="ac3"></div></div>
-        <div class="guesslist" id="guesses3"></div>
+    <section class="round" id="round1">
+      <div class="rhead"><span class="rnum">PART 1</span><h2 class="rtitle">Locate the map</h2></div>
+      <p class="rhint">A black-zone map is hidden. Guess maps to compare their traits — green matches, yellow partly matches, red misses. Arrows point toward the answer.</p>
+      <div class="field"><div class="combo"><input id="g1" autocomplete="off" spellcheck="false" placeholder="Guess a black-zone map"><button class="gbtn" id="b1">Guess</button></div><div class="acx" id="ac1"></div></div>
+      <div class="grid" id="grid1" style="display:none">
+        <div class="gridhead"><span>Map</span><span>Quality</span><span>Tier</span><span>Biome</span><span>Features</span><span>Nearest hub</span><span>Exits</span><span>Toward</span></div>
+        <div id="rows1"></div>
       </div>
-    </div>
+      <div id="solved1"></div>
+      <div class="blockfoot"><button class="reportbtn" data-round="1">⚑ Report wrong data</button></div>
+    </section>
 
-    <div class="attrs" id="attrstage" style="display:none">
-      <div class="who"><img id="atIcon" alt=""><div class="t" id="atName">-</div></div>
-      <div class="qblock"><p class="qlabel">Tags</p><div class="chips" id="tagChips"></div></div>
-      <div class="qblock sub" id="dmgBlock" style="display:none"><p class="qlabel">Damage type <span style="opacity:.6">(pick both if it deals both)</span></p><div class="chips" id="dmgChips"></div></div>
-      <div class="qblock sub" id="bfBlock" style="display:none"><p class="qlabel">Buff type</p><div class="chips" id="bfChips"></div></div>
-      <div class="qblock sub2" id="immBlock" style="display:none"><p class="qlabel">Immunity type</p><div class="chips" id="immChips"></div></div>
-      <div class="qblock sub" id="dbBlock" style="display:none"><p class="qlabel">Debuff type</p><div class="chips" id="dbChips"></div></div>
-      <div class="qblock sub" id="ccBlock" style="display:none"><p class="qlabel">Crowd control type</p><div class="chips" id="ccChips"></div></div>
-      <div class="qblock sub" id="clBlock" style="display:none"><p class="qlabel">Cleanse type <span style="opacity:.6">(what it removes from you / allies)</span></p><div class="chips" id="clChips"></div></div>
-      <div class="qblock sub" id="pgBlock" style="display:none"><p class="qlabel">Purge type <span style="opacity:.6">(what it strips off enemies)</span></p><div class="chips" id="pgChips"></div></div>
-      <div class="qblock"><p class="qlabel">Cast type</p><div class="chips" id="ctChips"></div></div>
-      <div class="qblock"><p class="qlabel">Targeting</p><div class="chips" id="crChips"></div></div>
-      <div class="qblock"><p class="qlabel">Cooldown</p>
-        <div class="cdrow"><input id="cdInput" type="number" step="0.1" min="0" placeholder="seconds"><span class="unit">sec</span><button class="ipbtn" id="ipBtn">Scales with IP</button></div>
+    <section class="round locked" id="round2">
+      <div class="rhead"><span class="rnum">PART 2</span><h2 class="rtitle">Trace the gates</h2></div>
+      <p class="rhint">Start on the map you just found and follow each gate in order. Name where you arrive. Hints unlock as you miss.</p>
+      <div class="navtop">
+        <svg class="compass" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="rose-ring" cx="60" cy="60" r="54"/><circle class="rose-ring" cx="60" cy="60" r="40" opacity=".5"/>
+          <path class="rose-card" d="M60 8 L64 60 L60 112 L56 60 Z"/><path class="rose-card" d="M8 60 L60 64 L112 60 L60 56 Z"/>
+          <path class="spoke" id="sp-NW" d="M60 60 L24 24 L34 52 Z" fill="var(--portal)"/>
+          <path class="spoke" id="sp-NE" d="M60 60 L96 24 L68 34 Z" fill="var(--portal)"/>
+          <path class="spoke" id="sp-SE" d="M60 60 L96 96 L86 68 Z" fill="var(--portal)"/>
+          <path class="spoke" id="sp-SW" d="M60 60 L24 96 L52 86 Z" fill="var(--portal)"/>
+          <circle cx="60" cy="60" r="4" fill="var(--brass-lite)"/>
+          <text class="rose-lbl" x="60" y="6" text-anchor="middle">N</text><text class="rose-lbl" x="60" y="118" text-anchor="middle">S</text>
+          <text class="rose-lbl" x="116" y="63" text-anchor="middle">E</text><text class="rose-lbl" x="4" y="63" text-anchor="middle">W</text>
+        </svg>
+        <div><div class="startmap"><div><div class="lab">Starting map</div><div class="nm" id="navStart">—</div></div></div><div class="gates" id="gates"></div></div>
       </div>
-      <button class="gbtn" id="b3confirm">Confirm guess</button>
-      <div id="reveal3"></div>
-    </div>
-    <div id="solved3"></div>
-    <div class="blockfoot"><button class="reportbtn" data-round="3">⚑ Report wrong data</button></div>
-  </section>
+      <div class="field" style="margin-top:16px"><div class="combo"><input id="g2" autocomplete="off" spellcheck="false" placeholder="Name the map you arrive at"><button class="gbtn" id="b2">Guess</button></div><div class="acx" id="ac2"></div></div>
+      <div class="guesslist" id="guesses2"></div><div id="hints2"></div><div id="solved2"></div>
+      <div class="blockfoot"><button class="reportbtn" data-round="2">⚑ Report wrong data</button></div>
+    </section>
 
-  <div class="finish" id="finish"><div class="finishmsg" id="finishMsg">All three rounds cleared.</div><button class="playagain" id="playAgain">Play again</button></div>
+    <div class="finish" id="mapsDone"><div class="finishmsg" id="mapsDoneMsg"></div>
+      <button class="playagain" data-again>Play again</button> <button class="newbtn" data-menu>Back to menu</button></div>
+  </div>
+
+  <!-- ===== ABILITIES GAME (round 3) ===== -->
+  <div id="gameAbilities" style="display:none">
+    <section class="round" id="round3">
+      <div class="rhead"><span class="rnum">ABILITY</span><h2 class="rtitle">Identify the ability</h2></div>
+      <p class="rhint">Name the ability from its icon — type its name, or a weapon line to list its spells. Then fill in everything you know about it and confirm.</p>
+      <div class="abilitywrap">
+        <div class="iconframe" id="abFrame"><img id="abIcon" alt="ability icon"></div>
+        <div class="abside">
+          <div class="field"><div class="combo"><input id="g3" autocomplete="off" spellcheck="false" placeholder="Name the ability"><button class="gbtn" id="b3">Guess</button></div><div class="acx" id="ac3"></div></div>
+          <div class="guesslist" id="guesses3"></div>
+        </div>
+      </div>
+
+      <div class="attrs" id="attrstage" style="display:none">
+        <div class="who"><img id="atIcon" alt=""><div class="t" id="atName">-</div></div>
+        <div class="qblock"><p class="qlabel">Tags</p><div class="chips" id="tagChips"></div></div>
+        <div class="qblock sub" id="dmgBlock" style="display:none"><p class="qlabel">Damage type <span style="opacity:.6">(pick both if it deals both)</span></p><div class="chips" id="dmgChips"></div></div>
+        <div class="qblock sub" id="bfBlock" style="display:none"><p class="qlabel">Buff type</p><div class="chips" id="bfChips"></div></div>
+        <div class="qblock sub2" id="immBlock" style="display:none"><p class="qlabel">Immunity type</p><div class="chips" id="immChips"></div></div>
+        <div class="qblock sub" id="dbBlock" style="display:none"><p class="qlabel">Debuff type</p><div class="chips" id="dbChips"></div></div>
+        <div class="qblock sub" id="ccBlock" style="display:none"><p class="qlabel">Crowd control type</p><div class="chips" id="ccChips"></div></div>
+        <div class="qblock sub" id="clBlock" style="display:none"><p class="qlabel">Cleanse type <span style="opacity:.6">(what it removes from you / allies)</span></p><div class="chips" id="clChips"></div></div>
+        <div class="qblock sub" id="pgBlock" style="display:none"><p class="qlabel">Purge type <span style="opacity:.6">(what it strips off enemies)</span></p><div class="chips" id="pgChips"></div></div>
+        <div class="qblock"><p class="qlabel">Cast type</p><div class="chips" id="ctChips"></div></div>
+        <div class="qblock"><p class="qlabel">Targeting</p><div class="chips" id="crChips"></div></div>
+        <div class="qblock"><p class="qlabel">Cooldown</p>
+          <div class="cdrow"><input id="cdInput" type="number" step="0.1" min="0" placeholder="seconds"><span class="unit">sec</span><button class="ipbtn" id="ipBtn">Scales with IP</button></div>
+        </div>
+        <button class="gbtn" id="b3confirm">Confirm guess</button>
+        <div id="reveal3"></div>
+      </div>
+      <div id="solved3"></div>
+      <div class="blockfoot"><button class="reportbtn" data-round="3">⚑ Report wrong data</button></div>
+    </section>
+
+    <div class="finish" id="abilitiesDone"><div class="finishmsg" id="abilitiesDoneMsg"></div>
+      <button class="playagain" data-again>Play again</button> <button class="newbtn" data-menu>Back to menu</button></div>
+  </div>
+
   <p class="foot">Map &amp; ability data from Albion Online's official dumps · icons via render.albiononline.com</p>
 </div>
+
 <div class="modal-backdrop" id="reportModal">
   <div class="modal">
     <h3>Report wrong data</h3>
@@ -119,6 +149,11 @@
     <div id="rpStatus"></div>
   </div>
 </div>
+
+<!-- Discord Activity: paste your application's OAuth2 Client ID to enable in-Discord launch.
+     Left blank, the game runs as a normal web page. -->
+<script>window.DISCORD_CLIENT_ID='';</script>
+<script src="discord-sdk.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

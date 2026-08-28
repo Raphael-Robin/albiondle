@@ -26,11 +26,7 @@ const PURGE=['Buffs','Movement Speed','HoTs','Shields','Invisibility'];
 const CT=['Instant','Cast time','Channeled','Toggle'];
 const CR=['Self','Targeted','Free aim'];
 
-let score={streak:0,best:0};
-try{const s=JSON.parse(localStorage.getItem('albiondle_score')); if(s)score=s;}catch(e){}
-function saveScore(){try{localStorage.setItem('albiondle_score',JSON.stringify(score));}catch(e){}
-  $('sStreak').textContent=score.streak; $('sBest').textContent=score.best;}
-saveScore();
+let mode='menu';   // 'menu' | 'maps' | 'abilities'
 
 /* ---------- autocomplete (maps) ---------- */
 function autocomplete(input, box, source, onEnter){
@@ -186,8 +182,10 @@ function finishRound2(){
   r2done=true; $('g2').disabled=true; $('b2').disabled=true; ac2.close();
   ['NW','NE','SE','SW'].forEach(d=>$('sp-'+d).classList.remove('lit'));
   $('solved2').innerHTML=`<div class="solved">${checkSvg} Arrived at <b style="color:var(--brass-lite);margin-left:4px">${MAPS[navAns].n}</b>.</div>`;
-  $('rail1').classList.add('done'); $('rail2').classList.add('active'); revealRound3();
-  setTimeout(()=>$('round3').scrollIntoView({behavior:'smooth',block:'start'}),650);
+  $('rail1').classList.add('done');
+  $('mapsDoneMsg').textContent='Map found and gates traced — nicely done.';
+  $('mapsDone').classList.add('show');
+  setTimeout(()=>$('mapsDone').scrollIntoView({behavior:'smooth',block:'nearest'}),450);
 }
 
 /* ===== ROUND 3 ===== */
@@ -242,7 +240,6 @@ function setupRound3(){
   const fr=$('abFrame'); fr.classList.remove('err');
   const img=$('abIcon'); img.onerror=()=>fr.classList.add('err'); img.src=ICON(ABILITIES[secretAb].id);
 }
-function revealRound3(){ $('round3').classList.remove('locked'); }
 function submit3name(){
   if(r3done||r3stage!=='name')return; const gi=resolve($('g3'),AB_SRC); if(gi<0)return;
   const win=gi===secretAb; const a=ABILITIES[gi];
@@ -320,12 +317,11 @@ function submit3confirm(){
   finishRound3(correct===total);
 }
 function finishRound3(allCorrect){
-  r3done=true; $('rail2').classList.add('done');
-  if(allCorrect){ score.streak++; score.best=Math.max(score.best,score.streak); }
-  else score.streak=0;
-  saveScore();
-  $('finishMsg').textContent=allCorrect?`Flawless — all three rounds cleared. Streak ${score.streak}.`:`Rounds complete. Round 3 wasn't perfect, so the streak resets.`;
-  $('finish').classList.add('show');
+  r3done=true;
+  $('abilitiesDoneMsg').textContent=allCorrect
+    ? 'Perfect — the ability and every trait were right.'
+    : 'Ability identified — some traits were off, see the reveal above.';
+  $('abilitiesDone').classList.add('show');
   setTimeout(()=>$('reveal3').scrollIntoView({behavior:'smooth',block:'nearest'}),200);
 }
 
@@ -337,18 +333,49 @@ function resetChips(){
   const ci=$('cdInput'); if(ci){ci.value='';ci.disabled=false;} const ib=$('ipBtn'); if(ib){ib.className='ipbtn';ib.disabled=false;}
   const bc=$('b3confirm'); if(bc)bc.disabled=false; const rv=$('reveal3'); if(rv)rv.innerHTML='';
 }
-function newGame(){
+/* ===== games ===== */
+function newMapGame(){
   secret=Math.floor(Math.random()*MAPS.length);
   let guard=0; while(!genNav(secret)&&guard++<60) secret=Math.floor(Math.random()*MAPS.length);
-  r1done=r2done=r3done=false;
+  r1done=r2done=false;
   $('g1').disabled=false;$('b1').disabled=false;$('g1').value='';$('rows1').innerHTML='';$('grid1').style.display='none';$('solved1').innerHTML='';
   $('g2').disabled=false;$('b2').disabled=false;$('g2').value='';$('guesses2').innerHTML='';$('hints2').innerHTML='';$('solved2').innerHTML='';$('round2').classList.add('locked');
-  $('g3').disabled=false;$('b3').disabled=false;$('g3').value='';$('guesses3').innerHTML='';$('round3').classList.add('locked');
-  $('attrstage').style.display='none'; resetChips();
-  setupRound2(); setupRound3();
-  $('finish').classList.remove('show');
-  ['rail0','rail1','rail2'].forEach(r=>$(r).classList.remove('done','active')); $('rail0').classList.add('active');
+  setupRound2();
+  $('mapsDone').classList.remove('show');
+  ['rail0','rail1'].forEach(r=>$(r).classList.remove('done','active')); $('rail0').classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'}); $('g1').focus();
+}
+function newAbilityGame(){
+  r3done=false;
+  $('g3').disabled=false;$('b3').disabled=false;$('g3').value='';$('guesses3').innerHTML='';$('solved3').innerHTML='';
+  $('attrstage').style.display='none'; resetChips();
+  setupRound3();
+  $('abilitiesDone').classList.remove('show');
+  window.scrollTo({top:0,behavior:'smooth'}); $('g3').focus();
+}
+function showMenu(){
+  mode='menu';
+  $('menu').style.display=''; $('gameMaps').style.display='none'; $('gameAbilities').style.display='none';
+  $('gameControls').style.display='none'; window.scrollTo({top:0});
+}
+function startMaps(){
+  mode='maps';
+  $('menu').style.display='none'; $('gameAbilities').style.display='none';
+  $('gameMaps').style.display=''; $('gameControls').style.display=''; newMapGame();
+}
+function startAbilities(){
+  mode='abilities';
+  $('menu').style.display='none'; $('gameMaps').style.display='none';
+  $('gameAbilities').style.display=''; $('gameControls').style.display=''; newAbilityGame();
+}
+function replay(){ mode==='abilities' ? newAbilityGame() : newMapGame(); }
+
+async function initDiscord(){                        // only runs when launched inside Discord
+  const params=new URLSearchParams(location.search);
+  if(!params.get('frame_id')) return;                // plain web page -> nothing to do
+  if(!window.DiscordSDK || !window.DISCORD_CLIENT_ID) return;
+  try{ const sdk=new window.DiscordSDK(window.DISCORD_CLIENT_ID); await sdk.ready(); }
+  catch(e){ console.warn('[Albiondle] Discord init failed',e); }
 }
 
 async function boot(){
@@ -366,17 +393,19 @@ async function boot(){
   $('b2').addEventListener('click',submit2); ac2=autocomplete($('g2'),$('ac2'),MAP_SRC,submit2);
   $('b3').addEventListener('click',submit3name); ac3=abilityAC($('g3'),$('ac3'),submit3name);
   $('b3confirm').addEventListener('click',submit3confirm);
-  $('newGame').addEventListener('click',newGame); $('playAgain').addEventListener('click',newGame);
-  $('showAll').addEventListener('click',()=>{
-    const on=document.body.classList.toggle('reveal-all');
-    $('showAll').classList.toggle('toggled',on); $('showAll').textContent=on?'Hide locked':'Show all';
-  });
+  $('pickMaps').addEventListener('click',startMaps);
+  $('pickAbilities').addEventListener('click',startAbilities);
+  $('newGame').addEventListener('click',replay);
+  $('toMenu').addEventListener('click',showMenu);
+  document.querySelectorAll('[data-again]').forEach(b=>b.addEventListener('click',replay));
+  document.querySelectorAll('[data-menu]').forEach(b=>b.addEventListener('click',showMenu));
   document.querySelectorAll('.reportbtn').forEach(b=>b.addEventListener('click',()=>openReport(+b.dataset.round)));
   $('rpCancel').addEventListener('click',closeReport);
   $('rpSubmit').addEventListener('click',submitReport);
   $('reportModal').addEventListener('click',e=>{if(e.target===$('reportModal'))closeReport();});
   buildR3Chips();
-  newGame();
+  initDiscord();
+  showMenu();
 }
 boot();
 
