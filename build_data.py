@@ -114,7 +114,7 @@ PURGE_IMMUNITY_IDS = {
     "DEFENSERUN",     # Iron Will
 }
 # Targeting overrides — the rule (main-spell target) is authoritative, so this is normally empty.
-# Add "SPELL_ID": "Self"/"Targeted"/"Free aim" only for a genuine one-off the data mislabels.
+# Add "SPELL_ID": "No Targeting"/"Targeted"/"Free aim" only for a genuine one-off the data mislabels.
 CAST_RANGE_OVERRIDES = {
 }
 
@@ -313,7 +313,7 @@ def clean_desc(txt):
 def target_class(t):
     t = (t or "").lower()
     if any(k in t for k in ("enemy","enemies","opponent")): return "enemy"
-    if any(k in t for k in ("self","caster","ally","allies","group","friend")): return "self"
+    if any(k in t for k in ("No Targeting","caster","ally","allies","group","friend")): return "No Targeting"
     return "?"
 
 def build_abilities(items_xml, spells_xml, loc_xml):
@@ -398,7 +398,7 @@ def build_abilities(items_xml, spells_xml, loc_xml):
             at=attrs(m.group(1)); ty=at.get("type")
             if not ty: continue
             tgt=target_class(at.get("target")); neg=(at.get("value","") or at.get("valuepersecond","")).startswith("-")
-            if tgt=="self" and not neg:
+            if tgt=="No Targeting" and not neg:
                 b=bd_bucket(ty,False)
                 if b: bf |= b
             elif tgt=="enemy":
@@ -471,7 +471,7 @@ def build_abilities(items_xml, spells_xml, loc_xml):
         #   ground         -> Free aim  (you freely aim a position / direction)
         #   any unit target-> Targeted  (you lock onto one enemy or ally; incl. all/allplayers = "the target")
         mt = head.get("target")
-        if mt in (None, "", "self"):   cr = "Self"
+        if mt in (None, "", "No Targeting"):   cr = "No Targeting"
         elif mt in GROUND_TARGETS:     cr = "Free aim"
         else:                          cr = "Targeted"
         if sp in CAST_RANGE_OVERRIDES: cr = CAST_RANGE_OVERRIDES[sp]

@@ -24,7 +24,7 @@ const CC=['Stun','Root','Slow','Silence','Interrupt','Sleep','Forced Movement'];
 const CLEANSE=['Stun','Root','Slow','Silence','Debuffs'];
 const PURGE=['Buffs','Movement Speed','HoTs','Shields','Invisibility'];
 const CT=['Instant','Cast time','Channeled','Toggle'];
-const CR=['Self','Targeted','Free aim'];
+const CR=['No Targeting','Targeted','Free aim'];
 
 let mode='menu';   // 'menu' | 'maps' | 'abilities'
 
