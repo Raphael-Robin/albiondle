@@ -128,7 +128,7 @@ FORCE_TAGS = {
 # NOT stun, so we expand it to those three (Stun stays a decoy the player must know isn't cleansed).
 # Purge strips positive effects off enemies.
 CLEANSE_CATS = {"crowdcontrol": {"Root","Slow","Silence"}, "debuff": {"Debuffs"}}
-PURGE_CATS   = {"buff":"Buffs", "movementbuff":"Movement Speed", "heal":"HoTs",
+PURGE_CATS   = {"buff":"Buffs", "movementbuff":"Movement Speed", "heal":"Healing over Time",
                 "buff_damageshield":"Shields", "invisibility":"Invisibility"}
 # ------------------------------------------------------------------------------------------------
 
